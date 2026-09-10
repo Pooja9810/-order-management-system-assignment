@@ -1,0 +1,4 @@
+venue,currency,trade_count,total_quantity,gross_notional_minor
+NASDAQ,USD,11,453,19647530
+NYSE,USD,1,150,3605550
+TSX,CAD,11,1210,10962500

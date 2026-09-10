@@ -1,0 +1,104 @@
+{
+  "securities": [
+    {
+      "securityId": "SEC-1001",
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "assetType": "STOCK",
+      "venue": "NASDAQ",
+      "currency": "USD",
+      "status": "ACTIVE",
+      "lotSize": 1,
+      "tickSizeMinor": 1,
+      "contractMultiplier": 1
+    },
+    {
+      "securityId": "SEC-1002",
+      "symbol": "MSFT",
+      "name": "Microsoft Corporation",
+      "assetType": "STOCK",
+      "venue": "NASDAQ",
+      "currency": "USD",
+      "status": "ACTIVE",
+      "lotSize": 1,
+      "tickSizeMinor": 1,
+      "contractMultiplier": 1
+    },
+    {
+      "securityId": "SEC-1003",
+      "symbol": "SHOP",
+      "name": "Shopify Inc. (Toronto listing)",
+      "assetType": "STOCK",
+      "venue": "TSX",
+      "currency": "CAD",
+      "status": "ACTIVE",
+      "lotSize": 1,
+      "tickSizeMinor": 1,
+      "contractMultiplier": 1
+    },
+    {
+      "securityId": "SEC-1004",
+      "symbol": "SHOP",
+      "name": "Shopify Inc. (New York listing)",
+      "assetType": "STOCK",
+      "venue": "NYSE",
+      "currency": "USD",
+      "status": "ACTIVE",
+      "lotSize": 1,
+      "tickSizeMinor": 1,
+      "contractMultiplier": 1
+    },
+    {
+      "securityId": "SEC-1005",
+      "symbol": "RY",
+      "name": "Royal Bank of Canada",
+      "assetType": "STOCK",
+      "venue": "TSX",
+      "currency": "CAD",
+      "status": "ACTIVE",
+      "lotSize": 1,
+      "tickSizeMinor": 1,
+      "contractMultiplier": 1
+    },
+    {
+      "securityId": "SEC-1006",
+      "symbol": "ENB",
+      "name": "Enbridge Inc.",
+      "assetType": "STOCK",
+      "venue": "TSX",
+      "currency": "CAD",
+      "status": "ACTIVE",
+      "lotSize": 100,
+      "tickSizeMinor": 1,
+      "contractMultiplier": 1
+    },
+    {
+      "securityId": "SEC-1007",
+      "symbol": "AAPL 260116C250",
+      "name": "AAPL Jan 2026 250 Call",
+      "assetType": "OPTION",
+      "venue": "NASDAQ",
+      "currency": "USD",
+      "status": "ACTIVE",
+      "lotSize": 1,
+      "tickSizeMinor": 5,
+      "contractMultiplier": 100,
+      "underlyingSymbol": "AAPL",
+      "optionType": "CALL",
+      "expiry": "2026-01-16",
+      "strikeMinor": 25000
+    },
+    {
+      "securityId": "SEC-1008",
+      "symbol": "HALT",
+      "name": "Halton Industries Ltd.",
+      "assetType": "STOCK",
+      "venue": "NYSE",
+      "currency": "USD",
+      "status": "HALTED",
+      "lotSize": 1,
+      "tickSizeMinor": 1,
+      "contractMultiplier": 1
+    }
+  ]
+}

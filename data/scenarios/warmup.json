@@ -1,0 +1,57 @@
+{
+  "name": "warmup",
+  "marketSeed": "warmup-150",
+  "queueDuplicateRate": 0,
+  "note": "Five orders, nothing awkward. Four of them trade, one is refused by the exchange. No cancels, no duplicate messages, no restart. Get this green before you look at main.",
+  "actions": [
+    {
+      "ref": "o1",
+      "action": "place",
+      "securityId": "SEC-1001",
+      "side": "BUY",
+      "quantity": 100,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 38500,
+      "note": "AAPL on NASDAQ in USD. The exchange trades it in several pieces, so this order ends up with more than one execution."
+    },
+    {
+      "ref": "o2",
+      "action": "place",
+      "symbol": "MSFT",
+      "side": "BUY",
+      "quantity": 200,
+      "orderType": "MARKET",
+      "note": "Named by symbol alone. Only one security trades under MSFT, so there is nothing to choose between."
+    },
+    {
+      "ref": "o3",
+      "action": "place",
+      "symbol": "SHOP",
+      "venue": "TSX",
+      "side": "BUY",
+      "quantity": 50,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 35000,
+      "note": "Named by symbol and venue rather than by id. SHOP is listed twice, so the venue is what picks it out."
+    },
+    {
+      "ref": "o4",
+      "action": "place",
+      "securityId": "SEC-1001",
+      "side": "SELL",
+      "quantity": 40,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 39000,
+      "note": "Selling some of the AAPL bought above, so the inventory report has a security with buys and sells."
+    },
+    {
+      "ref": "o5",
+      "action": "place",
+      "securityId": "SEC-1005",
+      "side": "BUY",
+      "quantity": 75,
+      "orderType": "MARKET",
+      "note": "The exchange refuses this one. It never trades, so nothing about it belongs in the ledger."
+    }
+  ]
+}

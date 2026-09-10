@@ -1,0 +1,21 @@
+{
+  "name": "order-management-system",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start:security": "node scaffold/security-service/server.js",
+    "start:market": "node scaffold/market-service/server.js",
+    "start:order": "node src/order-service/server.js",
+    "start:ledger": "node src/ledger-service/server.js",
+    "place": "node src/driver/place-orders.js",
+    "report": "node src/ledger-service/report-cli.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

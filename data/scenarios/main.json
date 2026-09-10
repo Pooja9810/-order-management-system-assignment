@@ -1,0 +1,304 @@
+{
+  "name": "main",
+  "marketSeed": "main-388",
+  "queueDuplicateRate": 0.25,
+  "restartAfterDriverMs": 400,
+  "note": "The real one. Fourteen orders are accepted and thirteen requests are refused before they ever reach the venue. Some orders name their security by id and some by symbol. A quarter of the messages the exchange publishes are written to the queue twice.",
+  "actions": [
+    {
+      "ref": "o1",
+      "action": "place",
+      "symbol": "AAPL",
+      "side": "BUY",
+      "quantity": 100,
+      "orderType": "MARKET",
+      "note": "Named by symbol alone. AAPL is listed once, so it resolves without help."
+    },
+    {
+      "ref": "o2",
+      "action": "place",
+      "securityId": "SEC-1002",
+      "side": "BUY",
+      "quantity": 300,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 42000,
+      "note": "MSFT. The exchange works this one in several pieces over a few seconds."
+    },
+    {
+      "ref": "r1",
+      "action": "place",
+      "securityId": "SEC-9999",
+      "side": "BUY",
+      "quantity": 10,
+      "orderType": "MARKET",
+      "note": "Refused: there is no security with this id, so security-service answers 404 and no order is created."
+    },
+    {
+      "ref": "o3",
+      "action": "place",
+      "symbol": "SHOP",
+      "venue": "TSX",
+      "side": "BUY",
+      "quantity": 250,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 11050,
+      "note": "Named by symbol and venue. SHOP is listed twice and the exchange listing picks the Toronto one."
+    },
+    {
+      "ref": "x1",
+      "action": "cancel",
+      "target": "o3",
+      "note": "The exchange was already trading this order. The cancel comes back refused and the order finishes fully traded - it still belongs in the ledger."
+    },
+    {
+      "ref": "o4",
+      "action": "place",
+      "securityId": "SEC-1004",
+      "side": "BUY",
+      "quantity": 400,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 8000,
+      "note": "SHOP on NYSE in USD. Same symbol as o3, different security, different currency, different venue."
+    },
+    {
+      "ref": "x2",
+      "action": "cancel",
+      "target": "o4",
+      "note": "This one cancels cleanly and never traded at all. It has no executions, so it must not be posted to the ledger."
+    },
+    {
+      "ref": "r2",
+      "action": "place",
+      "securityId": "SEC-1008",
+      "side": "BUY",
+      "quantity": 50,
+      "orderType": "MARKET",
+      "note": "Refused: security-service reports this security as HALTED, so it is not tradable."
+    },
+    {
+      "ref": "o5",
+      "action": "place",
+      "securityId": "SEC-1005",
+      "side": "BUY",
+      "quantity": 500,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 15500,
+      "note": "RY on TSX. The exchange trades part of it and then sits on the rest."
+    },
+    {
+      "ref": "x3",
+      "action": "cancel",
+      "target": "o5",
+      "note": "Cancels cleanly, but only after part of it traded. Cancelled and traded at the same time - it does belong in the ledger."
+    },
+    {
+      "ref": "r3",
+      "action": "place",
+      "securityId": "SEC-1006",
+      "side": "BUY",
+      "quantity": 150,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 5900,
+      "note": "Refused: ENB trades in lots of 100 and 150 is not a whole number of lots."
+    },
+    {
+      "ref": "r10",
+      "action": "place",
+      "symbol": "SHOP",
+      "side": "BUY",
+      "quantity": 10,
+      "orderType": "MARKET",
+      "note": "Refused: SHOP is listed on two venues, so the symbol on its own does not say which security is meant."
+    },
+    {
+      "ref": "o6",
+      "action": "place",
+      "securityId": "SEC-1007",
+      "side": "BUY",
+      "quantity": 10,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 1250,
+      "note": "An option. Ten contracts, and each contract covers 100 shares."
+    },
+    {
+      "ref": "r4",
+      "action": "place",
+      "securityId": "SEC-1007",
+      "side": "BUY",
+      "quantity": 5,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 1234,
+      "note": "Refused: this option's prices move in steps of 5 minor units and 1234 is not one of them."
+    },
+    {
+      "ref": "o7",
+      "action": "place",
+      "symbol": "ENB",
+      "side": "BUY",
+      "quantity": 500,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 5900,
+      "note": "Named by symbol alone. ENB trades in lots of 100, which the search result tells you."
+    },
+    {
+      "ref": "r5",
+      "action": "place",
+      "securityId": "SEC-1001",
+      "side": "BUY",
+      "quantity": 10,
+      "orderType": "LIMIT",
+      "note": "Refused: a limit order with no limit price."
+    },
+    {
+      "ref": "r11",
+      "action": "place",
+      "symbol": "WIDG",
+      "side": "BUY",
+      "quantity": 10,
+      "orderType": "MARKET",
+      "note": "Refused: nothing trades under WIDG."
+    },
+    {
+      "ref": "o8",
+      "action": "place",
+      "securityId": "SEC-1001",
+      "side": "SELL",
+      "quantity": 40,
+      "orderType": "MARKET",
+      "note": "Selling part of the AAPL bought in o1."
+    },
+    {
+      "ref": "r6",
+      "action": "place",
+      "securityId": "SEC-1002",
+      "side": "BUY",
+      "quantity": 10,
+      "orderType": "MARKET",
+      "limitPriceMinor": 100,
+      "note": "Refused: a market order carries no price, so a limit price here is a mistake."
+    },
+    {
+      "ref": "o9",
+      "action": "place",
+      "symbol": "SHOP",
+      "venue": "NYSE",
+      "side": "SELL",
+      "quantity": 150,
+      "orderType": "MARKET",
+      "note": "The same symbol, the other venue, and therefore the other security entirely."
+    },
+    {
+      "ref": "r7",
+      "action": "place",
+      "securityId": "SEC-1001",
+      "side": "BUY",
+      "quantity": 0,
+      "orderType": "MARKET",
+      "note": "Refused: a quantity of zero is not an order."
+    },
+    {
+      "ref": "r12",
+      "action": "place",
+      "symbol": "AAPL",
+      "venue": "TSX",
+      "side": "BUY",
+      "quantity": 10,
+      "orderType": "MARKET",
+      "note": "Refused: AAPL is a real symbol but it is not listed on TSX."
+    },
+    {
+      "ref": "o10",
+      "action": "place",
+      "securityId": "SEC-1002",
+      "side": "SELL",
+      "quantity": 100,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 45000,
+      "note": "MSFT, priced where the exchange will not trade it. It sits until it is cancelled."
+    },
+    {
+      "ref": "x4",
+      "action": "cancel",
+      "target": "o10",
+      "note": "Cancels cleanly with nothing traded."
+    },
+    {
+      "ref": "x5",
+      "action": "cancel",
+      "target": "o10",
+      "note": "Refused: a cancel has already been asked for on this order and no answer has come back yet."
+    },
+    {
+      "ref": "r8",
+      "action": "place",
+      "securityId": "SEC-1005",
+      "side": "HOLD",
+      "quantity": 10,
+      "orderType": "MARKET",
+      "note": "Refused: HOLD is not a side."
+    },
+    {
+      "ref": "o11",
+      "action": "place",
+      "securityId": "SEC-1003",
+      "side": "SELL",
+      "quantity": 80,
+      "orderType": "MARKET",
+      "note": "The exchange refuses this one outright. Nothing traded, nothing to post."
+    },
+    {
+      "ref": "r9",
+      "action": "place",
+      "securityId": "SEC-1005",
+      "side": "BUY",
+      "quantity": 10,
+      "orderType": "STOP",
+      "note": "Refused: STOP is not an order type this system supports."
+    },
+    {
+      "ref": "r13",
+      "action": "place",
+      "securityId": "SEC-1001",
+      "symbol": "AAPL",
+      "side": "BUY",
+      "quantity": 10,
+      "orderType": "MARKET",
+      "note": "Refused: an id and a symbol together. One or the other, not both."
+    },
+    {
+      "ref": "o12",
+      "action": "place",
+      "securityId": "SEC-1005",
+      "side": "BUY",
+      "quantity": 60,
+      "orderType": "MARKET",
+      "note": "Also refused by the exchange."
+    },
+    {
+      "ref": "o13",
+      "action": "place",
+      "securityId": "SEC-1007",
+      "side": "SELL",
+      "quantity": 6,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 1300,
+      "note": "Selling option contracts. Part of it trades before the cancel lands."
+    },
+    {
+      "ref": "x6",
+      "action": "cancel",
+      "target": "o13",
+      "note": "Cancels cleanly after a partial trade, so this order is both cancelled and in the ledger."
+    },
+    {
+      "ref": "o14",
+      "action": "place",
+      "securityId": "SEC-1006",
+      "side": "SELL",
+      "quantity": 200,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 6100,
+      "note": "Two lots of ENB back out again."
+    }
+  ]
+}

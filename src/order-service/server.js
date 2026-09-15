@@ -66,6 +66,13 @@ app.get("/health", (req, res) => {
   });
 });
 
+//POST/orders
+app.post("/orders", async (req, res) => {
+  //const response = await fetch("http://localhost:4003");
+  const data = req.body;
+  console.log(data);
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

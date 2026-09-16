@@ -20,7 +20,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Queue } from '../queue/index.js';
 import { buildPlan } from './planner.js';
-import { streamFor, intBetween } from '../lib/rng.js';
+import { streamFor, intBetween, hashString } from '../lib/rng.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
@@ -55,10 +55,6 @@ CREATE TABLE IF NOT EXISTS market_order (
   cancel_answered   INTEGER NOT NULL DEFAULT 0,
   seq               INTEGER NOT NULL DEFAULT 0
 );
-CREATE TABLE IF NOT EXISTS market_counter (
-  name  TEXT PRIMARY KEY,
-  value INTEGER NOT NULL
-);
 `);
 
 const queue = new Queue({
@@ -69,22 +65,23 @@ const queue = new Queue({
 
 const timers = new Map(); // marketOrderId -> [timeout, ...]
 
-function nextMarketOrderId() {
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    db.prepare(
-      "INSERT INTO market_counter (name, value) VALUES ('market_order', 0) ON CONFLICT(name) DO NOTHING"
-    ).run();
-    db.prepare("UPDATE market_counter SET value = value + 1 WHERE name = 'market_order'").run();
-    const { value } = db
-      .prepare("SELECT value FROM market_counter WHERE name = 'market_order'")
-      .get();
-    db.exec('COMMIT');
-    return `MKT-${value}`;
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
+/**
+ * The venue's own id for an order.
+ *
+ * Deliberately not a counter, and deliberately nothing to do with any id the
+ * OMS holds. A real venue has never heard of your primary keys, and an id that
+ * happened to line up with them would teach the wrong lesson. It is derived
+ * from the clientOrderId so that it is still reproducible.
+ */
+function newMarketOrderId(clientOrderId) {
+  const base = hashString(`${SEED}::market-order::${clientOrderId}`).toString(36);
+  let candidate = `MKT-${base}`;
+  let attempt = 0;
+  while (loadOrder(candidate)) {
+    attempt += 1;
+    candidate = `MKT-${base}${attempt}`;
   }
+  return candidate;
 }
 
 function loadOrder(marketOrderId) {
@@ -228,7 +225,7 @@ app.post('/orders', (req, res) => {
     });
   }
 
-  const marketOrderId = nextMarketOrderId();
+  const marketOrderId = newMarketOrderId(body.clientOrderId);
   const acceptedAt = Date.now();
   const plan = buildPlan(SEED, {
     clientOrderId: body.clientOrderId,

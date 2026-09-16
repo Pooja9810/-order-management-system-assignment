@@ -7,6 +7,7 @@
     {
       "ref": "o1",
       "action": "place",
+      "clientOrderId": "35892172",
       "securityId": "SEC-1001",
       "side": "BUY",
       "quantity": 100,
@@ -17,6 +18,7 @@
     {
       "ref": "o2",
       "action": "place",
+      "clientOrderId": "2f891800",
       "symbol": "MSFT",
       "side": "BUY",
       "quantity": 200,
@@ -26,6 +28,7 @@
     {
       "ref": "o3",
       "action": "place",
+      "clientOrderId": "3b892ae4",
       "symbol": "SHOP",
       "venue": "TSX",
       "side": "BUY",
@@ -37,6 +40,7 @@
     {
       "ref": "o4",
       "action": "place",
+      "clientOrderId": "9ddafec7",
       "securityId": "SEC-1001",
       "side": "SELL",
       "quantity": 40,
@@ -47,6 +51,7 @@
     {
       "ref": "o5",
       "action": "place",
+      "clientOrderId": "09e26490",
       "securityId": "SEC-1005",
       "side": "BUY",
       "quantity": 75,

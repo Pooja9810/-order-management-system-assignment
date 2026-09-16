@@ -129,22 +129,24 @@ test('warmup: five orders, nothing awkward', { timeout: 120000 }, async (t) => {
 
     // Refusals are checked against a settled system so the order count is stable.
     const refusals = [
-      ['side is not BUY or SELL', { securityId: 'SEC-1001', side: 'HOLD', quantity: 10, orderType: 'MARKET' }, 400, 'INVALID_SIDE'],
-      ['order type is not MARKET or LIMIT', { securityId: 'SEC-1001', side: 'BUY', quantity: 10, orderType: 'STOP' }, 400, 'INVALID_ORDER_TYPE'],
-      ['quantity is zero', { securityId: 'SEC-1001', side: 'BUY', quantity: 0, orderType: 'MARKET' }, 400, 'INVALID_QUANTITY'],
-      ['quantity is not a whole number', { securityId: 'SEC-1001', side: 'BUY', quantity: 1.5, orderType: 'MARKET' }, 400, 'INVALID_QUANTITY'],
-      ['a limit order with no price', { securityId: 'SEC-1001', side: 'BUY', quantity: 10, orderType: 'LIMIT' }, 400, 'MISSING_LIMIT_PRICE'],
-      ['a market order with a price', { securityId: 'SEC-1001', side: 'BUY', quantity: 10, orderType: 'MARKET', limitPriceMinor: 100 }, 400, 'UNEXPECTED_LIMIT_PRICE'],
-      ['neither a securityId nor a symbol', { side: 'BUY', quantity: 10, orderType: 'MARKET' }, 400, 'MISSING_SECURITY'],
-      ['a securityId and a symbol together', { securityId: 'SEC-1001', symbol: 'AAPL', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 400, 'AMBIGUOUS_SECURITY'],
-      ['a securityId with a venue', { securityId: 'SEC-1001', venue: 'NASDAQ', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 400, 'UNEXPECTED_VENUE'],
-      ['a securityId nobody has heard of', { securityId: 'SEC-9999', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 404, 'UNKNOWN_SECURITY'],
-      ['a symbol nothing trades under', { symbol: 'WIDG', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 404, 'UNKNOWN_SYMBOL'],
-      ['a symbol that is not listed at that venue', { symbol: 'AAPL', venue: 'TSX', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 404, 'SYMBOL_NOT_AT_VENUE'],
-      ['a symbol listed on two venues, with no venue given', { symbol: 'SHOP', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 422, 'AMBIGUOUS_SYMBOL'],
-      ['a security that is halted', { securityId: 'SEC-1008', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 422, 'SECURITY_NOT_TRADABLE'],
-      ['a quantity that is not whole lots', { securityId: 'SEC-1006', side: 'BUY', quantity: 150, orderType: 'LIMIT', limitPriceMinor: 5900 }, 422, 'INVALID_LOT_SIZE'],
-      ['a price that is not on a tick', { securityId: 'SEC-1007', side: 'BUY', quantity: 5, orderType: 'LIMIT', limitPriceMinor: 1234 }, 422, 'INVALID_PRICE_TICK'],
+      ['side is not BUY or SELL', { clientOrderId: 'refused-1', securityId: 'SEC-1001', side: 'HOLD', quantity: 10, orderType: 'MARKET' }, 400, 'INVALID_SIDE'],
+      ['order type is not MARKET or LIMIT', { clientOrderId: 'refused-2', securityId: 'SEC-1001', side: 'BUY', quantity: 10, orderType: 'STOP' }, 400, 'INVALID_ORDER_TYPE'],
+      ['quantity is zero', { clientOrderId: 'refused-3', securityId: 'SEC-1001', side: 'BUY', quantity: 0, orderType: 'MARKET' }, 400, 'INVALID_QUANTITY'],
+      ['quantity is not a whole number', { clientOrderId: 'refused-4', securityId: 'SEC-1001', side: 'BUY', quantity: 1.5, orderType: 'MARKET' }, 400, 'INVALID_QUANTITY'],
+      ['a limit order with no price', { clientOrderId: 'refused-5', securityId: 'SEC-1001', side: 'BUY', quantity: 10, orderType: 'LIMIT' }, 400, 'MISSING_LIMIT_PRICE'],
+      ['a market order with a price', { clientOrderId: 'refused-6', securityId: 'SEC-1001', side: 'BUY', quantity: 10, orderType: 'MARKET', limitPriceMinor: 100 }, 400, 'UNEXPECTED_LIMIT_PRICE'],
+      ['neither a securityId nor a symbol', { clientOrderId: 'tm', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 400, 'MISSING_SECURITY'],
+      ['no clientOrderId at all', { securityId: 'SEC-1001', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 400, 'MISSING_CLIENT_ORDER_ID'],
+      ['an empty clientOrderId', { clientOrderId: '   ', securityId: 'SEC-1001', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 400, 'MISSING_CLIENT_ORDER_ID'],
+      ['a securityId and a symbol together', { clientOrderId: 'refused-7', securityId: 'SEC-1001', symbol: 'AAPL', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 400, 'AMBIGUOUS_SECURITY'],
+      ['a securityId with a venue', { clientOrderId: 'refused-8', securityId: 'SEC-1001', venue: 'NASDAQ', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 400, 'UNEXPECTED_VENUE'],
+      ['a securityId nobody has heard of', { clientOrderId: 'refused-9', securityId: 'SEC-9999', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 404, 'UNKNOWN_SECURITY'],
+      ['a symbol nothing trades under', { clientOrderId: 'refused-10', symbol: 'WIDG', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 404, 'UNKNOWN_SYMBOL'],
+      ['a symbol that is not listed at that venue', { clientOrderId: 'refused-11', symbol: 'AAPL', venue: 'TSX', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 404, 'SYMBOL_NOT_AT_VENUE'],
+      ['a symbol listed on two venues, with no venue given', { clientOrderId: 'refused-12', symbol: 'SHOP', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 422, 'AMBIGUOUS_SYMBOL'],
+      ['a security that is halted', { clientOrderId: 'refused-13', securityId: 'SEC-1008', side: 'BUY', quantity: 10, orderType: 'MARKET' }, 422, 'SECURITY_NOT_TRADABLE'],
+      ['a quantity that is not whole lots', { clientOrderId: 'refused-14', securityId: 'SEC-1006', side: 'BUY', quantity: 150, orderType: 'LIMIT', limitPriceMinor: 5900 }, 422, 'INVALID_LOT_SIZE'],
+      ['a price that is not on a tick', { clientOrderId: 'refused-15', securityId: 'SEC-1007', side: 'BUY', quantity: 5, orderType: 'LIMIT', limitPriceMinor: 1234 }, 422, 'INVALID_PRICE_TICK'],
     ];
 
     for (const [description, body, status, error] of refusals) {
@@ -164,9 +166,51 @@ test('warmup: five orders, nothing awkward', { timeout: 120000 }, async (t) => {
       );
     });
 
+    // The caller's key is what makes a retry safe. Sending the same one again
+    // must return the order that already exists, not make a second one.
+    await t.test('the same clientOrderId twice makes one order, not two', async () => {
+      const body = {
+        clientOrderId: 'retry-me-once',
+        securityId: 'SEC-1002',
+        side: 'BUY',
+        quantity: 5,
+        orderType: 'MARKET',
+      };
+      const first = await postJson(`${URLS.order}/orders`, body);
+      assert.equal(first.status, 201, 'the first time is a new order');
+
+      const again = await postJson(`${URLS.order}/orders`, body);
+      assert.equal(again.status, 200, 'the second time is not a new order');
+      assert.equal(again.body.orderId, first.body.orderId, 'it is the same order');
+
+      const all = await getJson(`${URLS.order}/orders`);
+      const matching = all.body.orders.filter((o) => o.clientOrderId === 'retry-me-once');
+      assert.equal(matching.length, 1, 'exactly one order should carry that key');
+    });
+
+    await t.test('a retry with a different body returns the original, unchanged', async () => {
+      const key = 'retry-with-a-twist';
+      const first = await postJson(`${URLS.order}/orders`, {
+        clientOrderId: key, securityId: 'SEC-1002', side: 'BUY', quantity: 7, orderType: 'MARKET',
+      });
+      assert.equal(first.status, 201);
+
+      // Same key, completely different order. The key wins: the answer to this
+      // request was settled the first time it was asked.
+      const again = await postJson(`${URLS.order}/orders`, {
+        clientOrderId: key, securityId: 'SEC-1001', side: 'SELL', quantity: 999, orderType: 'MARKET',
+      });
+      assert.equal(again.status, 200);
+      assert.equal(again.body.orderId, first.body.orderId);
+      assert.equal(again.body.securityId, 'SEC-1002', 'the original security, not the retry body');
+      assert.equal(again.body.side, 'BUY', 'the original side');
+      assert.equal(again.body.quantity, 7, 'the original quantity');
+    });
+
     await t.test('a symbol that is listed once resolves without a venue', async () => {
       const before = await getJson(`${URLS.order}/orders`);
       const response = await postJson(`${URLS.order}/orders`, {
+        clientOrderId: 'probe-ry',
         symbol: 'RY',
         side: 'BUY',
         quantity: 1,
@@ -184,6 +228,7 @@ test('warmup: five orders, nothing awkward', { timeout: 120000 }, async (t) => {
 
     await t.test('a symbol on two venues resolves once the venue is given', async () => {
       const toronto = await postJson(`${URLS.order}/orders`, {
+        clientOrderId: 'probe-shop-tsx',
         symbol: 'SHOP',
         venue: 'TSX',
         side: 'BUY',
@@ -191,6 +236,7 @@ test('warmup: five orders, nothing awkward', { timeout: 120000 }, async (t) => {
         orderType: 'MARKET',
       });
       const newYork = await postJson(`${URLS.order}/orders`, {
+        clientOrderId: 'probe-shop-nyse',
         symbol: 'SHOP',
         venue: 'NYSE',
         side: 'BUY',

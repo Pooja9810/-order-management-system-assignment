@@ -3,11 +3,12 @@
   "marketSeed": "main-388",
   "queueDuplicateRate": 0.25,
   "restartAfterDriverMs": 400,
-  "note": "The real one. Fourteen orders are accepted and thirteen requests are refused before they ever reach the venue. Some orders name their security by id and some by symbol. A quarter of the messages the exchange publishes are written to the queue twice.",
+  "note": "The real one. Fourteen orders are created, fourteen requests are refused before they ever reach the exchange, and one request is a retry of an order that already exists. Some orders name their security by id and some by symbol. About a quarter of the messages the exchange publishes are written to the queue twice.",
   "actions": [
     {
       "ref": "o1",
       "action": "place",
+      "clientOrderId": "34891fdf",
       "symbol": "AAPL",
       "side": "BUY",
       "quantity": 100,
@@ -17,6 +18,7 @@
     {
       "ref": "o2",
       "action": "place",
+      "clientOrderId": "35892172",
       "securityId": "SEC-1002",
       "side": "BUY",
       "quantity": 300,
@@ -27,6 +29,7 @@
     {
       "ref": "r1",
       "action": "place",
+      "clientOrderId": "e27025b2",
       "securityId": "SEC-9999",
       "side": "BUY",
       "quantity": 10,
@@ -36,6 +39,7 @@
     {
       "ref": "o3",
       "action": "place",
+      "clientOrderId": "30891993",
       "symbol": "SHOP",
       "venue": "TSX",
       "side": "BUY",
@@ -53,6 +57,7 @@
     {
       "ref": "o4",
       "action": "place",
+      "clientOrderId": "3b892ae4",
       "securityId": "SEC-1004",
       "side": "BUY",
       "quantity": 400,
@@ -69,6 +74,7 @@
     {
       "ref": "r2",
       "action": "place",
+      "clientOrderId": "e170241f",
       "securityId": "SEC-1008",
       "side": "BUY",
       "quantity": 50,
@@ -78,6 +84,7 @@
     {
       "ref": "o5",
       "action": "place",
+      "clientOrderId": "102f6ace",
       "securityId": "SEC-1005",
       "side": "BUY",
       "quantity": 500,
@@ -94,6 +101,7 @@
     {
       "ref": "r3",
       "action": "place",
+      "clientOrderId": "e070228c",
       "securityId": "SEC-1006",
       "side": "BUY",
       "quantity": 150,
@@ -104,6 +112,7 @@
     {
       "ref": "r10",
       "action": "place",
+      "clientOrderId": "f88b0ba6",
       "symbol": "SHOP",
       "side": "BUY",
       "quantity": 10,
@@ -113,6 +122,7 @@
     {
       "ref": "o6",
       "action": "place",
+      "clientOrderId": "95daf22f",
       "securityId": "SEC-1007",
       "side": "BUY",
       "quantity": 10,
@@ -123,6 +133,7 @@
     {
       "ref": "r4",
       "action": "place",
+      "clientOrderId": "df7020f9",
       "securityId": "SEC-1007",
       "side": "BUY",
       "quantity": 5,
@@ -133,6 +144,7 @@
     {
       "ref": "o7",
       "action": "place",
+      "clientOrderId": "15e27774",
       "symbol": "ENB",
       "side": "BUY",
       "quantity": 500,
@@ -143,6 +155,7 @@
     {
       "ref": "r5",
       "action": "place",
+      "clientOrderId": "de701f66",
       "securityId": "SEC-1001",
       "side": "BUY",
       "quantity": 10,
@@ -152,6 +165,7 @@
     {
       "ref": "r11",
       "action": "place",
+      "clientOrderId": "f98b0d39",
       "symbol": "WIDG",
       "side": "BUY",
       "quantity": 10,
@@ -161,6 +175,7 @@
     {
       "ref": "o8",
       "action": "place",
+      "clientOrderId": "09d35a06",
       "securityId": "SEC-1001",
       "side": "SELL",
       "quantity": 40,
@@ -170,6 +185,7 @@
     {
       "ref": "r6",
       "action": "place",
+      "clientOrderId": "dd701dd3",
       "securityId": "SEC-1002",
       "side": "BUY",
       "quantity": 10,
@@ -178,8 +194,20 @@
       "note": "Refused: a market order carries no price, so a limit price here is a mistake."
     },
     {
+      "ref": "d1",
+      "action": "place",
+      "clientOrderId": "35892172",
+      "securityId": "SEC-1002",
+      "side": "BUY",
+      "quantity": 300,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 42000,
+      "note": "Not refused, and not a second order either: the same clientOrderId as o2, so the order already created is handed back. Answered 200 rather than 201."
+    },
+    {
       "ref": "o9",
       "action": "place",
+      "clientOrderId": "08d35873",
       "symbol": "SHOP",
       "venue": "NYSE",
       "side": "SELL",
@@ -190,6 +218,7 @@
     {
       "ref": "r7",
       "action": "place",
+      "clientOrderId": "dc701c40",
       "securityId": "SEC-1001",
       "side": "BUY",
       "quantity": 0,
@@ -199,6 +228,7 @@
     {
       "ref": "r12",
       "action": "place",
+      "clientOrderId": "f68b0880",
       "symbol": "AAPL",
       "venue": "TSX",
       "side": "BUY",
@@ -209,6 +239,7 @@
     {
       "ref": "o10",
       "action": "place",
+      "clientOrderId": "0bd35d2c",
       "securityId": "SEC-1002",
       "side": "SELL",
       "quantity": 100,
@@ -231,6 +262,7 @@
     {
       "ref": "r8",
       "action": "place",
+      "clientOrderId": "eb7033dd",
       "securityId": "SEC-1005",
       "side": "HOLD",
       "quantity": 10,
@@ -240,6 +272,7 @@
     {
       "ref": "o11",
       "action": "place",
+      "clientOrderId": "09d11b6f",
       "securityId": "SEC-1003",
       "side": "SELL",
       "quantity": 80,
@@ -249,6 +282,7 @@
     {
       "ref": "r9",
       "action": "place",
+      "clientOrderId": "ea70324a",
       "securityId": "SEC-1005",
       "side": "BUY",
       "quantity": 10,
@@ -256,8 +290,18 @@
       "note": "Refused: STOP is not an order type this system supports."
     },
     {
+      "ref": "r14",
+      "action": "place",
+      "securityId": "SEC-1001",
+      "side": "BUY",
+      "quantity": 10,
+      "orderType": "MARKET",
+      "note": "Refused: no clientOrderId. The caller has to say which request this is, so that sending it twice is safe."
+    },
+    {
       "ref": "r13",
       "action": "place",
+      "clientOrderId": "f78b0a13",
       "securityId": "SEC-1001",
       "symbol": "AAPL",
       "side": "BUY",
@@ -268,6 +312,7 @@
     {
       "ref": "o12",
       "action": "place",
+      "clientOrderId": "0bd11e95",
       "securityId": "SEC-1005",
       "side": "BUY",
       "quantity": 60,
@@ -277,6 +322,7 @@
     {
       "ref": "o13",
       "action": "place",
+      "clientOrderId": "0cd12028",
       "securityId": "SEC-1007",
       "side": "SELL",
       "quantity": 6,
@@ -293,6 +339,7 @@
     {
       "ref": "o14",
       "action": "place",
+      "clientOrderId": "0ed7df13",
       "securityId": "SEC-1006",
       "side": "SELL",
       "quantity": 200,

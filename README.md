@@ -89,4 +89,3 @@ rm -rf out
 ## When you are done
 
 Fill in `NOTES.md`.
-# -order-management-system-assignment

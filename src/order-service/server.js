@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import express from "express";
-import { createOrder } from "./orderHelper.js";
+import { createOrder, getOrderById } from "./orderHelper.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -62,7 +62,7 @@ const db = openDb(absoluteDbPath);
 const app = express();
 const PORT = 4003;
 
-//THIS helps express read json from request bodeis
+//THIS helps express read json from request bodies
 
 app.use(express.json());
 
@@ -98,55 +98,51 @@ app.post("/orders", async (req, res) => {
 
     console.log(`${data.securityId},${data.symbol},${data.venue}`);
   } else if (body.symbol) {
-    {
-      const symData = await fetch(
-        `http://127.0.0.1:4001/search?symbol=${body.symbol}`,
+    const symData = await fetch(
+      `http://127.0.0.1:4001/search?symbol=${body.symbol}`,
+    );
+
+    let reply = await symData.json();
+    security = reply.results[0];
+    console.log("Symbol data present in security", reply);
+
+    // if one symbol found
+    if (reply.count === 1) {
+      console.log(`Symbol ${reply.symbol} is the security`);
+    }
+    //if none
+    else if (reply.count === 0) {
+      console.log(`Symbol ${reply.symbol} not found`);
+    }
+    //if more than 1 symbol. Match with venue
+    else if (reply.count > 1) {
+      console.log(
+        `Symbol ${reply.symbol} appears more than once. Match with venue`,
       );
 
-      let reply = await symData.json();
-      security = reply.results[0];
-      console.log("Symbol data present in security", reply);
-
-      // if one symbol found
-      if (reply.count === 1) {
-        console.log(`Symbol ${reply.symbol} is the security`);
-      }
-      //if none
-      else if (reply.count === 0) {
-        console.log(`Symbol ${reply.symbol} not found`);
-      }
-      //if more than 1 symbol. Match with venue
-      else if (reply.count > 1) {
-        console.log(
-          `Symbol ${reply.symbol} appears more than once. Match with venue`,
-        );
-
-        const venueMatch = reply.results.filter(
-          (item) => item.venue === body.venue,
-        );
-        console.log("Venue Match:", venueMatch);
-        if (venueMatch.length === 1) {
-          console.log("Both symbol and venue match", venueMatch[0]);
-        } else {
-          return res.status(404).json({
-            error: `Symbol ${reply.symbol} not found on venue ${body.venue}`,
-          });
-        }
+      const venueMatch = reply.results.filter(
+        (item) => item.venue === body.venue,
+      );
+      console.log("Venue Match:", venueMatch);
+      if (venueMatch.length === 1) {
+        security = venueMatch[0];
+        console.log("Both symbol and venue match");
+      } else {
+        return res.status(404).json({
+          error: `Symbol ${reply.symbol} not found on venue ${body.venue}`,
+        });
       }
     }
   }
-  console.log("CLIENT ID ", body.clientOrderId);
+
   console.log("Final security:", security);
 
   //create an order inside the orders table
-  const orderId = createOrder(db, body, security);
-  console.log("orderId in server.js:", orderId);
+  const orderResult = createOrder(db, body, security);
 
   //Send the order as a response
-  const orderDetails = db
-    .prepare("SELECT * FROM orders WHERE orderId = ?")
-    .get(orderId);
-  res.status(201).json(orderDetails);
+  console.log("Order present in the orders table:", orderResult);
+  res.status(201).json(orderResult);
 });
 
 //get orders
@@ -164,9 +160,8 @@ app.get("/orders", (req, res) => {
 //get orders/:orderId
 app.get("/orders/:orderId", (req, res) => {
   try {
-    let orderId = req.params.orderId;
-    let stmt = db.prepare("SELECT * FROM orders WHERE orderId = ?");
-    let order = stmt.get(orderId);
+    const order = getOrderById(db, req.params.orderId);
+    if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
     res.json(order);
   } catch (error) {
     console.log("SQL error", error);

@@ -1,5 +1,7 @@
-export const createOrder = (db, body, security) => {
-  console.log("Request bodY:", `${body.clientOrderId}`, security);
+export const createOrder = (db, orderRequest, security) => {
+  console.log(
+    `About to create an order for clientOrderId: ${orderRequest.clientOrderId}`,
+  );
 
   const stmt =
     db.prepare(`INSERT INTO orders (clientOrderId,securityId,symbol,venue,currency,assetType,
@@ -7,22 +9,30 @@ export const createOrder = (db, body, security) => {
     values (?,?,?,?,?,?,?,?,?,?,?,?)`);
 
   const orderResult = stmt.run(
-    body.clientOrderId,
+    orderRequest.clientOrderId,
     security.securityId,
     security.symbol,
     security.venue,
     security.currency,
     security.assetType,
     security.contractMultiplier,
-    body.side,
-    body.quantity,
-    body.orderType,
-    body.limitPriceMinor ?? null,
+    orderRequest.side,
+    orderRequest.quantity,
+    orderRequest.orderType,
+    orderRequest.limitPriceMinor ?? null,
     new Date().toISOString(),
   );
 
   const orderId = orderResult.lastInsertRowid;
 
-  console.log("New orderId:", orderId);
-  return orderResult.lastInsertRowid;
+  //Return the current order
+
+  const order = db
+    .prepare("SELECT * FROM orders WHERE orderId = ?")
+    .get(orderId);
+  return order;
+};
+
+export const getOrderById = (db, orderId) => {
+  return db.prepare("SELECT * FROM orders WHERE orderId = ?").get(orderId);
 };

@@ -6,8 +6,8 @@ import { createOrder } from "./orderHelper.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
-  orderId INTEGER PRIMARY KEY ,
-  clientOrderId TEXT    NOT NULL UNIQUE,
+    orderId INTEGER PRIMARY KEY ,
+    clientOrderId TEXT    NOT NULL UNIQUE,
     marketOrderId     TEXT,
     securityId  TEXT    NOT NULL,
     symbol TEXT NOT NULL,
@@ -29,16 +29,13 @@ const SCHEMA = `
   );
 
   CREATE TABLE IF NOT EXISTS executions (
-  execId TEXT NOT NULL PRIMARY KEY,
-  order_id INTEGER NOT NULL REFERENCES orders(order_id),
-  sequence INTEGER NOT NULL,
-  executedQuantity INTEGER NOT NULL,
-  priceMinor INTEGER NOT NULL,
-  occurredAt TEXT NOT NULL
+    execId TEXT NOT NULL PRIMARY KEY,
+    orderId INTEGER NOT NULL REFERENCES orders(orderId),
+    sequence INTEGER NOT NULL,
+    executedQuantity INTEGER NOT NULL,
+    priceMinor INTEGER NOT NULL,
+    occurredAt TEXT NOT NULL
   )
-
-
-
   `;
 
 function openDb(file) {
@@ -138,12 +135,18 @@ app.post("/orders", async (req, res) => {
       }
     }
   }
-
+  console.log("CLIENT ID ", body.clientOrderId);
   console.log("Final security:", security);
 
   //create an order inside the orders table
-  createOrder(db, body, security);
-  res.status(201).json({ message: "received" });
+  const orderId = createOrder(db, body, security);
+  console.log("orderId in server.js:", orderId);
+
+  //Send the order as a response
+  const orderDetails = db
+    .prepare("SELECT * FROM orders WHERE orderId = ?")
+    .get(orderId);
+  res.status(201).json(orderDetails);
 });
 
 //get orders
@@ -174,21 +177,3 @@ app.get("/orders/:orderId", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
-
-/*Wegenerate the req body and give it some deeets.
-
-we access the security service to gain info related to the securityId present in my request body.
-Once i bring req body and securityId details together, I then put some fields toegther to create an order.
-clientOrderId in my request body is randomly generated unique id.
-
-when i send the req from postman, the createOrder function creates a new order in the orders table with a unique client id.
-
-Before any order insertion we have to check three things:
-1) if security id is present in sec table ,else  404.
-2) if symbol is present else 404. If more than one then compare along with venue
-3) if symbol and venue match done. else refuse
- First I got the req body and security details, now I just need to insert them into the orders table.*/
-
-// app.listen(PORT, () => {
-//   console.log(`Server running on http://localhost:${PORT}`);
-// });

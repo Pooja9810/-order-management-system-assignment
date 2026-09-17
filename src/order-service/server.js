@@ -138,17 +138,45 @@ app.post("/orders", async (req, res) => {
       }
     }
   }
+
   console.log("Final security:", security);
+
+  //create an order inside the orders table
+  createOrder(db, body, security);
   res.status(201).json({ message: "received" });
 });
+
+//get orders
+app.get("/orders", (req, res) => {
+  try {
+    let stmt = db.prepare("SELECT * FROM orders");
+    const orders = stmt.all();
+    res.json(orders);
+  } catch (error) {
+    console.log("SQL error", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+//get orders/:orderId
+app.get("/orders/:orderId", (req, res) => {
+  try {
+    let orderId = req.params.orderId;
+    let stmt = db.prepare("SELECT * FROM orders WHERE orderId = ?");
+    let order = stmt.get(orderId);
+    res.json(order);
+  } catch (error) {
+    console.log("SQL error", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
-//create an order inside the orders table
-//createOrder(db);
-
 /*Wegenerate the req body and give it some deeets.
+
 we access the security service to gain info related to the securityId present in my request body.
 Once i bring req body and securityId details together, I then put some fields toegther to create an order.
 clientOrderId in my request body is randomly generated unique id.

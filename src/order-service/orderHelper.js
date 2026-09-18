@@ -2,7 +2,6 @@ export const createOrder = (db, orderRequest, security) => {
   console.log(
     `About to create an order for clientOrderId: ${orderRequest.clientOrderId}`,
   );
-
   const stmt =
     db.prepare(`INSERT INTO orders (clientOrderId,securityId,symbol,venue,currency,assetType,
       contractMultiplier,side,quantity,orderType,limitPriceMinor,createdAt)

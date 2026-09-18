@@ -103,7 +103,7 @@ app.get("/orders", (req, res) => {
     //Return the sql result
     res.json(orders);
   } catch (error) {
-    console.log("SQL error", error);
+    console.error("SQL error", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -115,7 +115,7 @@ app.get("/orders/:orderId", (req, res) => {
     if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
     res.json(order);
   } catch (error) {
-    console.log("SQL error", error);
+    console.error("SQL error", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

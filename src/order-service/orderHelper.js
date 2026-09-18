@@ -6,9 +6,9 @@ export const createOrder = (db, orderRequest, security) => {
   const stmt =
     db.prepare(`INSERT INTO orders (clientOrderId,securityId,symbol,venue,currency,assetType,
       contractMultiplier,side,quantity,orderType,limitPriceMinor,createdAt)
-    values (?,?,?,?,?,?,?,?,?,?,?,?)`);
+    values (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`);
 
-  const orderResult = stmt.run(
+  const orderResult = stmt.get(
     orderRequest.clientOrderId,
     security.securityId,
     security.symbol,
@@ -23,16 +23,15 @@ export const createOrder = (db, orderRequest, security) => {
     new Date().toISOString(),
   );
 
-  const orderId = orderResult.lastInsertRowid;
-
   //Return the current order
-
-  const order = db
-    .prepare("SELECT * FROM orders WHERE orderId = ?")
-    .get(orderId);
-  return order;
+  return orderResult;
 };
 
 export const getOrderById = (db, orderId) => {
   return db.prepare("SELECT * FROM orders WHERE orderId = ?").get(orderId);
+};
+
+export const getAllOrders = (db) => {
+  let stmt = db.prepare("SELECT * FROM orders");
+  return stmt.all();
 };

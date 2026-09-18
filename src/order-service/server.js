@@ -2,12 +2,13 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import express from "express";
-import { createOrder } from "./orderHelper.js";
+import { createOrder, getOrderById, getAllOrders } from "./orderHelper.js";
+import { fetchSecurity } from "./securityHelper.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
-  orderId INTEGER PRIMARY KEY ,
-  clientOrderId TEXT    NOT NULL UNIQUE,
+    orderId INTEGER PRIMARY KEY ,
+    clientOrderId TEXT    NOT NULL UNIQUE,
     marketOrderId     TEXT,
     securityId  TEXT    NOT NULL,
     symbol TEXT NOT NULL,
@@ -29,16 +30,13 @@ const SCHEMA = `
   );
 
   CREATE TABLE IF NOT EXISTS executions (
-  execId TEXT NOT NULL PRIMARY KEY,
-  order_id INTEGER NOT NULL REFERENCES orders(order_id),
-  sequence INTEGER NOT NULL,
-  executedQuantity INTEGER NOT NULL,
-  priceMinor INTEGER NOT NULL,
-  occurredAt TEXT NOT NULL
+    execId TEXT NOT NULL PRIMARY KEY,
+    orderId INTEGER NOT NULL REFERENCES orders(orderId),
+    sequence INTEGER NOT NULL,
+    executedQuantity INTEGER NOT NULL,
+    priceMinor INTEGER NOT NULL,
+    occurredAt TEXT NOT NULL
   )
-
-
-
   `;
 
 function openDb(file) {
@@ -65,7 +63,7 @@ const db = openDb(absoluteDbPath);
 const app = express();
 const PORT = 4003;
 
-//THIS helps express read json from request bodeis
+//This helps express read json from request bodies
 
 app.use(express.json());
 
@@ -77,83 +75,35 @@ app.get("/health", (req, res) => {
 
 //POST/orders
 app.post("/orders", async (req, res) => {
-  const body = req.body;
-  console.log("Request body:", body);
+  try {
+    const orderRequest = req.body;
+    console.log("Request body:", orderRequest);
 
-  let security = null;
+    //calling fetchSecurity
+    const security = await fetchSecurity(orderRequest);
 
-  //access security-service to get security id
-  if (body.securityId) {
-    const response = await fetch(
-      `http://127.0.0.1:4001/info/${body.securityId}`,
-    );
+    //create an order inside the orders table
+    const orderResult = createOrder(db, orderRequest, security);
 
-    if (response.status === 404) {
-      return res
-        .status(404)
-        .json({ error: `Security id ${body.securityId} not found` });
-    }
-    const data = await response.json();
-    security = data;
-    console.log("Security data:", data);
-
-    //Read symbol, and venue from req.body
-
-    console.log(`${data.securityId},${data.symbol},${data.venue}`);
-  } else if (body.symbol) {
-    {
-      const symData = await fetch(
-        `http://127.0.0.1:4001/search?symbol=${body.symbol}`,
-      );
-
-      let reply = await symData.json();
-      security = reply.results[0];
-      console.log("Symbol data present in security", reply);
-
-      // if one symbol found
-      if (reply.count === 1) {
-        console.log(`Symbol ${reply.symbol} is the security`);
-      }
-      //if none
-      else if (reply.count === 0) {
-        console.log(`Symbol ${reply.symbol} not found`);
-      }
-      //if more than 1 symbol. Match with venue
-      else if (reply.count > 1) {
-        console.log(
-          `Symbol ${reply.symbol} appears more than once. Match with venue`,
-        );
-
-        const venueMatch = reply.results.filter(
-          (item) => item.venue === body.venue,
-        );
-        console.log("Venue Match:", venueMatch);
-        if (venueMatch.length === 1) {
-          console.log("Both symbol and venue match", venueMatch[0]);
-        } else {
-          return res.status(404).json({
-            error: `Symbol ${reply.symbol} not found on venue ${body.venue}`,
-          });
-        }
-      }
+    //Send the order as a response
+    console.log("Order present in the orders table:", orderResult);
+    res.status(201).json(orderResult);
+  } catch (err) {
+    if (err && err.status) {
+      return res.status(err.status).json({ error: err.error });
     }
   }
-
-  console.log("Final security:", security);
-
-  //create an order inside the orders table
-  createOrder(db, body, security);
-  res.status(201).json({ message: "received" });
 });
 
-//get orders
+//get all orders
 app.get("/orders", (req, res) => {
   try {
-    let stmt = db.prepare("SELECT * FROM orders");
-    const orders = stmt.all();
+    //calling getAllOrders from orderHelper.js fn
+    const orders = getAllOrders(db);
+    //Return the sql result
     res.json(orders);
   } catch (error) {
-    console.log("SQL error", error);
+    console.error("SQL error", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -161,12 +111,11 @@ app.get("/orders", (req, res) => {
 //get orders/:orderId
 app.get("/orders/:orderId", (req, res) => {
   try {
-    let orderId = req.params.orderId;
-    let stmt = db.prepare("SELECT * FROM orders WHERE orderId = ?");
-    let order = stmt.get(orderId);
+    const order = getOrderById(db, req.params.orderId);
+    if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
     res.json(order);
   } catch (error) {
-    console.log("SQL error", error);
+    console.error("SQL error", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -174,21 +123,3 @@ app.get("/orders/:orderId", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
-
-/*Wegenerate the req body and give it some deeets.
-
-we access the security service to gain info related to the securityId present in my request body.
-Once i bring req body and securityId details together, I then put some fields toegther to create an order.
-clientOrderId in my request body is randomly generated unique id.
-
-when i send the req from postman, the createOrder function creates a new order in the orders table with a unique client id.
-
-Before any order insertion we have to check three things:
-1) if security id is present in sec table ,else  404.
-2) if symbol is present else 404. If more than one then compare along with venue
-3) if symbol and venue match done. else refuse
- First I got the req body and security details, now I just need to insert them into the orders table.*/
-
-// app.listen(PORT, () => {
-//   console.log(`Server running on http://localhost:${PORT}`);
-// });

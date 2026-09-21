@@ -3,7 +3,7 @@ export const fetchSecurityById = async (securityId) => {
   const response = await fetch(`http://127.0.0.1:4001/info/${securityId}`);
 
   if (response.status === 404) {
-    return { status: 404, error: `Security id ${securityId} not found` };
+    return { status: 404, error: `UNKNOWN_SECURITY` };
   }
 
   return await response.json();
@@ -57,7 +57,7 @@ export async function fetchSecurity(body) {
       } else {
         throw {
           status: 404,
-          error: `Symbol ${reply.symbol} not found on venue ${body.venue}`,
+          error: `SYMBOL_NOT_AT_VENUE`,
         };
       }
     }

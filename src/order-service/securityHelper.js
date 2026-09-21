@@ -8,7 +8,7 @@ export const fetchSecurityById = async (securityId) => {
 
   return await response.json();
 };
-
+//function to fetch security using securityId or symbol or symbol and venue
 export async function fetchSecurity(body) {
   let security = null;
 

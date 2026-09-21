@@ -2,8 +2,15 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import express from "express";
-import { createOrder, getOrderById, getAllOrders } from "./orderHelper.js";
+import {
+  createOrder,
+  getOrderById,
+  getAllOrders,
+  getOrderByClientOrderId,
+} from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
+import { created, ok } from "../helpers/serverHelper.js";
+import { validateOrderRequest } from "./validateOrder.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -75,23 +82,37 @@ app.get("/health", (req, res) => {
 
 //POST/orders
 app.post("/orders", async (req, res) => {
+  const orderRequest = req.body;
+  console.log("Request body:", orderRequest);
+  //Check for missing clientOrderId in orderRequest
   try {
-    const orderRequest = req.body;
-    console.log("Request body:", orderRequest);
-
     //calling fetchSecurity
     const security = await fetchSecurity(orderRequest);
+    const validationError = validateOrderRequest(orderRequest);
+    //any error in validation
+    if (validationError) {
+      return res
+        .status(validationError.status)
+        .json({ error: validationError.error });
+    }
 
     //create an order inside the orders table
     const orderResult = createOrder(db, orderRequest, security);
 
     //Send the order as a response
     console.log("Order present in the orders table:", orderResult);
-    res.status(201).json(orderResult);
+    return created(res, orderResult);
   } catch (err) {
-    if (err && err.status) {
-      return res.status(err.status).json({ error: err.error });
+    // clientOrderId already present in db
+    console.error(err);
+    if (err.cause.errstr === "constraint failed") {
+      const existingOrder = getOrderByClientOrderId(
+        db,
+        orderRequest.clientOrderId,
+      );
+      return ok(res, existingOrder);
     }
+    return res.status(err.status).json({ error: err.error });
   }
 });
 

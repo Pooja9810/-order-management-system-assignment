@@ -84,10 +84,18 @@ app.get("/health", (req, res) => {
 app.post("/orders", async (req, res) => {
   const orderRequest = req.body;
   console.log("Request body:", orderRequest);
+  let security;
   //Check for missing clientOrderId in orderRequest
   try {
-    //calling fetchSecurity
-    const security = await fetchSecurity(orderRequest);
+    try {
+      //calling fetchSecurity
+      security = await fetchSecurity(orderRequest);
+    } catch (error) {
+      console.error(error);
+      {
+        return res.status(502).json({ error: "SECURITY_SERVICE_UNAVAILABLE" });
+      }
+    }
     const validationError = validateOrderRequest(orderRequest);
     //any error in validation
     if (validationError) {
@@ -105,7 +113,7 @@ app.post("/orders", async (req, res) => {
   } catch (err) {
     // clientOrderId already present in db
     console.error(err);
-    if (err.cause.errstr === "constraint failed") {
+    if (err.cause === "constraint failed") {
       const existingOrder = getOrderByClientOrderId(
         db,
         orderRequest.clientOrderId,

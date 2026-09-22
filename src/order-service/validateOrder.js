@@ -32,6 +32,9 @@ export const validateOrderRequest = (orderRequest) => {
     return { status: 400, error: "UNEXPECTED_VENUE" };
   }
   //...if()
+  //   if (!validateSymbol(orderResult)) {
+  //     return { status: 404, error: "UNKNOWN_SYMBOL" };
+  //   }
 };
 //1. Validating the clientOrderId
 export const validateClientOrderId = (orderRequest) => {
@@ -150,9 +153,19 @@ const validateVenue = (orderRequest) => {
     orderRequest.venue,
   );
 
-  if (typeof orderRequest.venue !== "undefined") {
+  if (
+    typeof orderRequest.securityId !== "undefined" &&
+    typeof orderRequest.venue !== "undefined"
+  ) {
     return false;
   } else {
     return true;
   }
 };
+
+// //11. unknown symbol
+// const validateSymbol = (orderResult) => {
+//   console.log(
+//     `Checking if symbol is presnt in securities: ${orderResult.symbol}`,
+//   );
+// };

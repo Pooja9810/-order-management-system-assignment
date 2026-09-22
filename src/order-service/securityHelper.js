@@ -10,6 +10,7 @@ export const fetchSecurityById = async (securityId) => {
 };
 //function to fetch security using securityId or symbol or symbol and venue
 export async function fetchSecurity(body) {
+  // try {
   let security = null;
 
   //access security-service to get security id
@@ -33,12 +34,8 @@ export async function fetchSecurity(body) {
     security = reply.results[0];
     //console.log("Symbol data present in security", reply);
 
-    // if one symbol found
-    if (reply.count === 1) {
-      console.log(`Symbol ${reply.symbol} is the security`);
-    }
-    //if none
-    else if (reply.count === 0) {
+    //if no symbol found
+    if (reply.count === 0) {
       console.log(`Symbol ${reply.symbol} not found`);
 
       throw {
@@ -46,19 +43,20 @@ export async function fetchSecurity(body) {
         error: `UNKNOWN_SYMBOL`,
       };
     }
-    //only symbol ,no venue present
-    console.log("Venue", body.venue);
-    if (body.venue === undefined) {
-      throw {
-        status: 422,
-        error: `AMBIGUOUS_SYMBOL`,
-      };
+    // if one symbol found
+    else if (reply.count === 1) {
+      security = reply.results[0];
+      console.log(`Symbol ${reply.symbol} is the security`);
     }
     //if more than 1 symbol. Match with venue
     else if (reply.count > 1) {
       console.log(
         `Symbol ${reply.symbol} appears more than once. Match with venue`,
       );
+      //check if body conatins venue
+      if (!body.venue) {
+        throw { status: 422, error: "AMBIGUOUS_SYMBOL" };
+      }
       //check if symbol given has a particular venue
       const venueMatch = reply.results.filter(
         (item) => item.venue === body.venue,

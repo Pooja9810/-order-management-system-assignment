@@ -87,15 +87,7 @@ app.post("/orders", async (req, res) => {
   let security;
   //Check for missing clientOrderId in orderRequest
   try {
-    try {
-      //calling fetchSecurity
-      security = await fetchSecurity(orderRequest);
-    } catch (error) {
-      console.error(error);
-      {
-        return res.status(502).json({ error: "SECURITY_SERVICE_UNAVAILABLE" });
-      }
-    }
+    //validating all fields of an order
     const validationError = validateOrderRequest(orderRequest);
     //any error in validation
     if (validationError) {
@@ -103,6 +95,14 @@ app.post("/orders", async (req, res) => {
         .status(validationError.status)
         .json({ error: validationError.error });
     }
+    //Check if clientOrderId is already in the db
+
+    const existing = getOrderByClientOrderId(db, orderRequest.clientOrderId);
+    if (existing) return ok(res, existing);
+
+    //calling fetchSecurity
+
+    security = await fetchSecurity(orderRequest);
 
     //create an order inside the orders table
     const orderResult = createOrder(db, orderRequest, security);
@@ -111,15 +111,14 @@ app.post("/orders", async (req, res) => {
     console.log("Order present in the orders table:", orderResult);
     return created(res, orderResult);
   } catch (err) {
-    // clientOrderId already present in db
     console.error(err);
-    if (err.cause === "constraint failed") {
-      const existingOrder = getOrderByClientOrderId(
-        db,
-        orderRequest.clientOrderId,
-      );
-      return ok(res, existingOrder);
-    }
+    // if (err.cause === "constraint failed") {
+    //   const existingOrder = getOrderByClientOrderId(
+    //     db,
+    //     orderRequest.clientOrderId,
+    //   );
+    //   return ok(res, existingOrder);
+    // }
     return res.status(err.status).json({ error: err.error });
   }
 });
@@ -152,3 +151,21 @@ app.get("/orders/:orderId", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
+// y {
+//     try {
+//       //calling fetchSecurity
+//       security = await fetchSecurity(orderRequest);
+//     } catch (error) {
+//       console.error(error);
+//       {
+//         return res.status(502).json({ error: "SECURITY_SERVICE_UNAVAILABLE" });
+//       }
+//     }
+//     const validationError = validateOrderRequest(orderRequest);
+//     //any error in validation
+//     if (validationError) {
+//       return res
+//         .status(validationError.status)
+//         .json({ error: validationError.error });
+//     }

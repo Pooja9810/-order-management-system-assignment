@@ -2,7 +2,7 @@
 
 export const validateOrderRequest = (orderRequest) => {
   if (!validateClientOrderId(orderRequest)) {
-    return { status: 400, error: "MISSING_CLIENT_ID" };
+    return { status: 400, error: "MISSING_CLIENT_ORDER_ID" };
   }
   if (!validateSide(orderRequest)) {
     return { status: 400, error: "INVALID_SIDE" };
@@ -75,7 +75,7 @@ const validateOrderType = (orderRequest) => {
 const validateQuantity = (orderRequest) => {
   console.log("Checking quantity:", orderRequest.quantity);
   let quantity = orderRequest.quantity;
-  if (quantity <= 0) {
+  if (!Number.isInteger(quantity) || quantity <= 0) {
     return false;
   } else {
     return true;
@@ -89,7 +89,10 @@ const missingLimitPriceMinor = (orderRequest) => {
       "Checking limitPriceMinor for orderType LIMIT:",
       orderRequest.limitPriceMinor,
     );
-    if (orderRequest.limitPriceMinor <= 0) {
+    if (
+      !Number.isInteger(orderRequest.limitPriceMinor) ||
+      orderRequest.limitPriceMinor <= 0
+    ) {
       return false;
     } else {
       return true;

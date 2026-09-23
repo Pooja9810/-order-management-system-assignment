@@ -3,13 +3,14 @@ export const fetchSecurityById = async (securityId) => {
   const response = await fetch(`http://127.0.0.1:4001/info/${securityId}`);
 
   if (response.status === 404) {
-    return { status: 404, error: `Security id ${securityId} not found` };
+    return { status: 404, error: `UNKNOWN_SECURITY` };
   }
 
   return await response.json();
 };
-
+//function to fetch security using securityId or symbol or symbol and venue
 export async function fetchSecurity(body) {
+  // try {
   let security = null;
 
   //access security-service to get security id
@@ -31,38 +32,51 @@ export async function fetchSecurity(body) {
 
     let reply = await symData.json();
     security = reply.results[0];
-    console.log("Symbol data present in security", reply);
+    //console.log("Symbol data present in security", reply);
 
-    // if one symbol found
-    if (reply.count === 1) {
-      console.log(`Symbol ${reply.symbol} is the security`);
-    }
-    //if none
-    else if (reply.count === 0) {
+    //if no symbol found
+    if (reply.count === 0) {
       console.log(`Symbol ${reply.symbol} not found`);
+
+      throw {
+        status: 404,
+        error: `UNKNOWN_SYMBOL`,
+      };
+    }
+    // if one symbol found
+    else if (reply.count === 1) {
+      security = reply.results[0];
+      console.log(`Symbol ${reply.symbol} is the security`);
     }
     //if more than 1 symbol. Match with venue
     else if (reply.count > 1) {
       console.log(
         `Symbol ${reply.symbol} appears more than once. Match with venue`,
       );
-
+      //check if body conatins venue
+      if (!body.venue) {
+        throw { status: 422, error: "AMBIGUOUS_SYMBOL" };
+      }
+      //check if symbol given has a particular venue
       const venueMatch = reply.results.filter(
         (item) => item.venue === body.venue,
       );
+
       console.log("Venue Match:", venueMatch);
       if (venueMatch.length === 1) {
         security = venueMatch[0];
-        console.log("Both symbol and venue match");
-      } else {
+      }
+      //if symbol and venue both are given but dont match
+      else if (venueMatch.length === 0) {
         throw {
           status: 404,
-          error: `Symbol ${reply.symbol} not found on venue ${body.venue}`,
+          error: `SYMBOL_NOT_AT_VENUE`,
         };
       }
     }
   }
 
   console.log("Final security:", security);
+
   return security;
 }

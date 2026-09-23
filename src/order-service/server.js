@@ -2,8 +2,18 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import express from "express";
-import { createOrder, getOrderById, getAllOrders } from "./orderHelper.js";
+import {
+  createOrder,
+  getOrderById,
+  getAllOrders,
+  getOrderByClientOrderId,
+} from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
+import { created, ok } from "../helpers/serverHelper.js";
+import {
+  validateOrderRequest,
+  validateOrderWithSecurity,
+} from "./validateOrder.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -75,23 +85,47 @@ app.get("/health", (req, res) => {
 
 //POST/orders
 app.post("/orders", async (req, res) => {
+  const orderRequest = req.body;
+  console.log("Request body:", orderRequest);
+  let security;
+  //Check for missing clientOrderId in orderRequest
   try {
-    const orderRequest = req.body;
-    console.log("Request body:", orderRequest);
+    //validating all fields of an order
+    const validationError = validateOrderRequest(orderRequest);
+    //any error in validation
+    if (validationError) {
+      return res
+        .status(validationError.status)
+        .json({ error: validationError.error });
+    }
+    //Check if clientOrderId is already in the db
+
+    const existing = getOrderByClientOrderId(db, orderRequest.clientOrderId);
+    if (existing) return ok(res, existing);
 
     //calling fetchSecurity
-    const security = await fetchSecurity(orderRequest);
+
+    security = await fetchSecurity(orderRequest);
+
+    //Validating fields with security
+    const securityError = validateOrderWithSecurity(orderRequest, security);
+    //any error in validation
+    if (securityError) {
+      return res
+        .status(securityError.status)
+        .json({ error: securityError.error });
+    }
 
     //create an order inside the orders table
     const orderResult = createOrder(db, orderRequest, security);
 
     //Send the order as a response
     console.log("Order present in the orders table:", orderResult);
-    res.status(201).json(orderResult);
+    return created(res, orderResult);
   } catch (err) {
-    if (err && err.status) {
-      return res.status(err.status).json({ error: err.error });
-    }
+    console.error(err);
+
+    return res.status(err.status).json({ error: err.error });
   }
 });
 

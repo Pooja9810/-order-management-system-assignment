@@ -10,12 +10,12 @@ Somebody wants to buy 100 shares. They send that wish to your program. Your prog
 
 Four services run at once:
 
-| Service | Port | Who writes it | What it is |
-| --- | --- | --- | --- |
-| security-service | 4001 | **given to you** | Answers questions about securities. Read-only, backed by a JSON file. |
-| market-service | 4002 | **given to you** | Pretends to be the exchanges. Takes orders and reports back on a queue. |
-| **order-service** | 4003 | **you** | The front door. Takes orders from people, talks to the other three. |
-| **ledger-service** | 4004 | **you** | The permanent record, and the reports. |
+| Service            | Port | Who writes it    | What it is                                                              |
+| ------------------ | ---- | ---------------- | ----------------------------------------------------------------------- |
+| security-service   | 4001 | **given to you** | Answers questions about securities. Read-only, backed by a JSON file.   |
+| market-service     | 4002 | **given to you** | Pretends to be the exchanges. Takes orders and reports back on a queue. |
+| **order-service**  | 4003 | **you**          | The front door. Takes orders from people, talks to the other three.     |
+| **ledger-service** | 4004 | **you**          | The permanent record, and the reports.                                  |
 
 You also write a small **driver** that reads a scenario file and places the orders in it, which is how the whole thing gets exercised.
 
@@ -49,7 +49,7 @@ Nothing else. No order moves itself along, nothing times out, nothing is swept u
 
 There are exactly **three** places where one arrival causes your program to do something you were not directly asked for, and all three are listed here so you never have to wonder whether there are others:
 
-- **Applying a queue message** is followed by a check: if the order is *now* finished and has at least one execution, it is sent to the ledger. Note the wording — it is not "the message that finishes it". Messages arrive in any order, so the message that finishes an order and the message that gives it its first execution may not be the same one, and may not arrive in that order. See §8.2 and §10.6.
+- **Applying a queue message** is followed by a check: if the order is _now_ finished and has at least one execution, it is sent to the ledger. Note the wording — it is not "the message that finishes it". Messages arrive in any order, so the message that finishes an order and the message that gives it its first execution may not be the same one, and may not arrive in that order. See §8.2 and §10.6.
 - **The report trigger** causes two CSV files to be written. See §12.3.
 - **Starting up** causes order-service to look for finished orders that never reached the ledger, and send them. See §10.6. It is the only thing that happens without something arriving from outside, and it exists only because the process can be killed halfway through sending one.
 
@@ -61,15 +61,15 @@ That is the complete list. If a rule is not written in §8, that arrival does no
 
 **Work the answer out. Do not keep it.**
 
-Your order-service will want fields like `filledQuantity` and `averagePrice`. Do not create them. Keep the *executions* — the individual pieces of trading the exchange reports — and add them up whenever somebody asks. (`status` is a special case, because people want to search by it. §11 says what to do about that, and the answer is still not "keep a running one".)
+Your order-service will want fields like `filledQuantity` and `averagePrice`. Do not create them. Keep the _executions_ — the individual pieces of trading the exchange reports — and add them up whenever somebody asks. (`status` is a special case, because people want to search by it. §11 says what to do about that, and the answer is still not "keep a running one".)
 
 Here is why, using order 2 from the real scenario file. It is a buy of 300 MSFT. The exchange trades it in three pieces and publishes three messages:
 
-| Message | Quantity |
-| --- | --- |
-| `EXEC-MKT-1ea0m8u-2` | 22 |
-| `EXEC-MKT-1ea0m8u-3` | 164 |
-| `EXEC-MKT-1ea0m8u-4` | 114 |
+| Message              | Quantity |
+| -------------------- | -------- |
+| `EXEC-MKT-1ea0m8u-2` | 22       |
+| `EXEC-MKT-1ea0m8u-3` | 164      |
+| `EXEC-MKT-1ea0m8u-4` | 114      |
 
 22 + 164 + 114 = 300. The order is completely filled.
 
@@ -77,15 +77,15 @@ Now: **the queue delivers `EXEC-MKT-1ea0m8u-3` twice.** Not because anything wen
 
 That extra row does not stay put. It goes into the ledger with the rest, and out into the report, changing lines in files that never mention order 2 anywhere. And it is not the only one: six of the twenty-one trade messages in the main scenario are delivered twice. Here is the whole of the damage:
 
-| Report line | Correct | With duplicates counted |
-| --- | --- | --- |
-| `SEC-1002` buy / trades / gross | 300 / 3 / 12600000 | 464 / 4 / 19488000 |
-| `SEC-1003` buy / trades / gross | 250 / 3 / 2762500 | 485 / 5 / 5359250 |
-| `SEC-1005` buy / trades / gross | 250 / 1 / 3875000 | 500 / 2 / 7750000 |
-| `SEC-1006` buy / trades / gross | 500 / 5 / 4170000 | 623 / 6 / 4895700 |
-| `SEC-1007` buy / trades / gross | 10 / 3 / 1380000 | 12 / 4 / 1630000 |
-| `NASDAQ` trades / quantity / gross | 11 / 451 / 19381484 | 13 / 617 / 26519484 |
-| `TSX` trades / quantity / gross | 9 / 1200 / 10807500 | 13 / 1808 / 18004950 |
+| Report line                        | Correct             | With duplicates counted |
+| ---------------------------------- | ------------------- | ----------------------- |
+| `SEC-1002` buy / trades / gross    | 300 / 3 / 12600000  | 464 / 4 / 19488000      |
+| `SEC-1003` buy / trades / gross    | 250 / 3 / 2762500   | 485 / 5 / 5359250       |
+| `SEC-1005` buy / trades / gross    | 250 / 1 / 3875000   | 500 / 2 / 7750000       |
+| `SEC-1006` buy / trades / gross    | 500 / 5 / 4170000   | 623 / 6 / 4895700       |
+| `SEC-1007` buy / trades / gross    | 10 / 3 / 1380000    | 12 / 4 / 1630000        |
+| `NASDAQ` trades / quantity / gross | 11 / 451 / 19381484 | 13 / 617 / 26519484     |
+| `TSX` trades / quantity / gross    | 9 / 1200 / 10807500 | 13 / 1808 / 18004950    |
 
 Look at the `SEC-1005` row. Order 5 was a buy of 500 that traded exactly 250 and was then cancelled. Count its one execution twice and the total becomes 500 — the whole order — so by §10.1 it is no longer `CANCELLED`, it is `FILLED`, and its `leavesQuantity` drops from 250 to 0. **One message arriving twice does not merely inflate a number. It changes what happened to the order.**
 
@@ -99,21 +99,21 @@ You have now been told about one of the six. You will not be told about the othe
 
 Thirteen terms, plus a short note after them. Nothing else in this document assumes you know anything about trading, and no trading term is used below that this section has not covered.
 
-| Word | What it means here |
-| --- | --- |
-| **Security** | A thing that can be traded. Identified by a `securityId` like `SEC-1003`. |
-| **Symbol** | The short name a security trades under, like `AAPL`. **Not unique** — see §4.1. |
-| **Venue** | The exchange a security trades on: `NYSE`, `NASDAQ` or `TSX`. |
-| **Side** | `BUY` or `SELL`. |
-| **Order** | A request to buy or sell a quantity of one security. |
-| **Order type** | `MARKET` (trade at whatever the price is) or `LIMIT` (trade only at this price or better, so the order carries a `limitPriceMinor`). |
-| **Execution** | One piece of actual trading: an `executedQuantity` at a `priceMinor`. One order can produce several. Each has an `execId`. |
-| **Fill** | Short for "an execution happened". An order is *filled* when its executions add up to its whole quantity. |
-| **Minor units** | Money as a whole number of the smallest unit — cents. `38500` means $385.00. There are no decimal numbers anywhere in this system. |
-| **Position** | How much of a security is held: everything bought minus everything sold. It can be negative, which means more was sold than bought. |
-| **Notional** | What trading was worth: quantity × price, and × the contract multiplier where there is one. |
-| **Listing** | One security's entry at one venue. `SHOP` has two listings, and they are two securities. |
-| **Leaves** | What is left of an order: the quantity asked for, minus the quantity traded so far. |
+| Word            | What it means here                                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Security**    | A thing that can be traded. Identified by a `securityId` like `SEC-1003`.                                                            |
+| **Symbol**      | The short name a security trades under, like `AAPL`. **Not unique** — see §4.1.                                                      |
+| **Venue**       | The exchange a security trades on: `NYSE`, `NASDAQ` or `TSX`.                                                                        |
+| **Side**        | `BUY` or `SELL`.                                                                                                                     |
+| **Order**       | A request to buy or sell a quantity of one security.                                                                                 |
+| **Order type**  | `MARKET` (trade at whatever the price is) or `LIMIT` (trade only at this price or better, so the order carries a `limitPriceMinor`). |
+| **Execution**   | One piece of actual trading: an `executedQuantity` at a `priceMinor`. One order can produce several. Each has an `execId`.           |
+| **Fill**        | Short for "an execution happened". An order is _filled_ when its executions add up to its whole quantity.                            |
+| **Minor units** | Money as a whole number of the smallest unit — cents. `38500` means $385.00. There are no decimal numbers anywhere in this system.   |
+| **Position**    | How much of a security is held: everything bought minus everything sold. It can be negative, which means more was sold than bought.  |
+| **Notional**    | What trading was worth: quantity × price, and × the contract multiplier where there is one.                                          |
+| **Listing**     | One security's entry at one venue. `SHOP` has two listings, and they are two securities.                                             |
+| **Leaves**      | What is left of an order: the quantity asked for, minus the quantity traded so far.                                                  |
 
 Two more words appear only in the option's record, and only because that record is real: an **option** is a security that covers a quantity of something else, a **contract** is one unit of it, and the something else is the **underlying**. Nothing in this assignment does anything with them beyond multiplying by `contractMultiplier`.
 
@@ -121,7 +121,7 @@ The status names in §10.1 are not defined anywhere else either — they mean ex
 
 ### 4.1 The one that catches people
 
-A **symbol is not an identity**. `SHOP` is a security on TSX priced in Canadian dollars, *and* a different security on NYSE priced in US dollars. They are `SEC-1003` and `SEC-1004`. They are not the same thing and their positions must never be added together.
+A **symbol is not an identity**. `SHOP` is a security on TSX priced in Canadian dollars, _and_ a different security on NYSE priced in US dollars. They are `SEC-1003` and `SEC-1004`. They are not the same thing and their positions must never be added together.
 
 The main scenario buys 250 of one and sells 150 of the other, and it names both of them by symbol rather than by id — so your program has to tell them apart itself, using `GET /search` and the venue. If anything downstream is then keyed by symbol, those two become one security holding 100 shares, and the report is wrong in a way that is very hard to see afterwards.
 
@@ -133,11 +133,11 @@ market-service knows nothing about your system. It does not know what `SEC-1003`
 
 So there are three different ids for the same order, and you need all of them:
 
-| Id | Made by | Looks like | Used for |
-| --- | --- | --- | --- |
-| `orderId` | you | `7` | Everything inside your system. The ledger's key. |
-| `clientOrderId` | **whoever is placing the order** | `35892172` | Sent with the request. Identifies the request so that sending it twice is safe. |
-| `marketOrderId` | the exchange | `MKT-1ea0m8u` | What every queue message is labelled with. |
+| Id              | Made by                          | Looks like    | Used for                                                                        |
+| --------------- | -------------------------------- | ------------- | ------------------------------------------------------------------------------- |
+| `orderId`       | you                              | `7`           | Everything inside your system. The ledger's key.                                |
+| `clientOrderId` | **whoever is placing the order** | `35892172`    | Sent with the request. Identifies the request so that sending it twice is safe. |
+| `marketOrderId` | the exchange                     | `MKT-1ea0m8u` | What every queue message is labelled with.                                      |
 
 **None of the three can be worked out from either of the others.** The exchange has never heard of your order ids and does not hand out anything resembling one — `MKT-1ea0m8u` is its own business, and it will not be the seventh of anything. Keep all three, and look an order up by whichever id the thing talking to you actually used.
 
@@ -155,26 +155,26 @@ It is also why a caller-supplied key is not just paperwork: the exchange keys it
 
 Every setting your code needs. Apart from HTTP status codes and the rules in §9, no number should appear in your code that is not either here or read from a file. (market-service and the queue have two settings of their own, `MARKET_SEED` and `QUEUE_DUPLICATE_RATE`. The tests set them from the scenario file. Yours must not read them.)
 
-| Name | Value | Where it comes from |
-| --- | --- | --- |
-| security-service port | 4001 | `SECURITY_PORT` |
-| market-service port | 4002 | `MARKET_PORT` |
-| order-service port | 4003 | `ORDER_PORT` |
-| ledger-service port | 4004 | `LEDGER_PORT` |
-| Queue file | `out/queue.sqlite` | `QUEUE_FILE` |
-| Queue name | `market-updates` | `QUEUE_NAME` |
-| Visibility timeout | 3000 ms | `QUEUE_VISIBILITY_MS` |
-| Report interval | 5 minutes | `REPORT_INTERVAL_MS` |
-| Report directory | `out/reports` | `REPORT_DIR` |
-| order-service database | `out/order-service.sqlite` | `ORDER_DB` |
-| ledger-service database | `out/ledger-service.sqlite` | `LEDGER_DB` |
-| security-service address | `http://127.0.0.1:4001` | `SECURITY_URL` |
-| market-service address | `http://127.0.0.1:4002` | `MARKET_URL` |
-| order-service address | `http://127.0.0.1:4003` | `ORDER_URL` |
-| ledger-service address | `http://127.0.0.1:4004` | `LEDGER_URL` |
-| Sides | `BUY`, `SELL` | — |
-| Order types | `MARKET`, `LIMIT` | — |
-| Venues | `NYSE`, `NASDAQ`, `TSX` | — |
+| Name                     | Value                       | Where it comes from   |
+| ------------------------ | --------------------------- | --------------------- |
+| security-service port    | 4001                        | `SECURITY_PORT`       |
+| market-service port      | 4002                        | `MARKET_PORT`         |
+| order-service port       | 4003                        | `ORDER_PORT`          |
+| ledger-service port      | 4004                        | `LEDGER_PORT`         |
+| Queue file               | `out/queue.sqlite`          | `QUEUE_FILE`          |
+| Queue name               | `market-updates`            | `QUEUE_NAME`          |
+| Visibility timeout       | 3000 ms                     | `QUEUE_VISIBILITY_MS` |
+| Report interval          | 5 minutes                   | `REPORT_INTERVAL_MS`  |
+| Report directory         | `out/reports`               | `REPORT_DIR`          |
+| order-service database   | `out/order-service.sqlite`  | `ORDER_DB`            |
+| ledger-service database  | `out/ledger-service.sqlite` | `LEDGER_DB`           |
+| security-service address | `http://127.0.0.1:4001`     | `SECURITY_URL`        |
+| market-service address   | `http://127.0.0.1:4002`     | `MARKET_URL`          |
+| order-service address    | `http://127.0.0.1:4003`     | `ORDER_URL`           |
+| ledger-service address   | `http://127.0.0.1:4004`     | `LEDGER_URL`          |
+| Sides                    | `BUY`, `SELL`               | —                     |
+| Order types              | `MARKET`, `LIMIT`           | —                     |
+| Venues                   | `NYSE`, `NASDAQ`, `TSX`     | —                     |
 
 Read every one of them from `process.env` with the value above as the default. The tests set several of them; a hard-coded port will fail.
 
@@ -184,9 +184,9 @@ Read every one of them from `process.env` with the value above as the default. T
 
 ### 6.1 security-service (port 4001)
 
-| Request | Answer |
-| --- | --- |
-| `GET /info/:securityId` | The security, or `404 {"error":"SECURITY_NOT_FOUND"}` |
+| Request                   | Answer                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /info/:securityId`   | The security, or `404 {"error":"SECURITY_NOT_FOUND"}`                                                                                       |
 | `GET /search?symbol=SHOP` | `{ symbol, count, results: [...] }` — every listing under that symbol, or `400 {"error":"MISSING_SYMBOL"}` if the query parameter is absent |
 
 A security looks like this:
@@ -220,11 +220,11 @@ There are eight securities in `data/securities.json`. Read it if you like; your 
 
 ### 6.2 market-service (port 4002)
 
-| Request | Answer |
-| --- | --- |
-| `POST /orders` | `201 { marketOrderId, clientOrderId, duplicate: false }`, or `200` with `duplicate: true` if it has seen this `clientOrderId` before, or `400` if the request is malformed |
-| `DELETE /orders/:marketOrderId` | `202 { marketOrderId, status: "CANCEL_PENDING" }`, or `404` if it has never heard of that id |
-| `GET /health` | it is up |
+| Request                         | Answer                                                                                                                                                                     |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /orders`                  | `201 { marketOrderId, clientOrderId, duplicate: false }`, or `200` with `duplicate: true` if it has seen this `clientOrderId` before, or `400` if the request is malformed |
+| `DELETE /orders/:marketOrderId` | `202 { marketOrderId, status: "CANCEL_PENDING" }`, or `404` if it has never heard of that id                                                                               |
+| `GET /health`                   | it is up                                                                                                                                                                   |
 
 The exchange checks what it is sent and answers `400` for a missing field, an unknown venue, a bad side, a bad order type, a quantity that is not a whole number above zero, or a limit order with no price. If you have done §9.1 properly you will never see one, so treat a `400` from here as a bug in your own code rather than something to handle gracefully.
 
@@ -247,7 +247,7 @@ The body of `POST /orders`:
 
 Two things to notice:
 
-- **Sending the same `clientOrderId` twice does not create a second order.** You get `200` back with `duplicate: true` and the original `marketOrderId`. The exchange does for you exactly what §9.1 asks you to do for your own callers — pass the caller's key straight through and the protection carries all the way down. It is also why the order must be written to your database *before* you call the exchange: if this process dies mid-call, the retry has to find the order that already exists.
+- **Sending the same `clientOrderId` twice does not create a second order.** You get `200` back with `duplicate: true` and the original `marketOrderId`. The exchange does for you exactly what §9.1 asks you to do for your own callers — pass the caller's key straight through and the protection carries all the way down. It is also why the order must be written to your database _before_ you call the exchange: if this process dies mid-call, the retry has to find the order that already exists.
 - **`DELETE` does not cancel anything.** It asks. The answer comes back on the queue, later, and may be no.
 
 ### 6.3 The queue
@@ -255,11 +255,11 @@ Two things to notice:
 A message queue kept in a SQLite file. `scaffold/queue/index.js` has the whole thing; the part you use is:
 
 ```js
-import { consume } from '../../scaffold/queue/index.js';
+import { consume } from "../../scaffold/queue/index.js";
 
 const consumer = consume({
-  file: process.env.QUEUE_FILE ?? 'out/queue.sqlite',
-  name: 'market-updates',
+  file: process.env.QUEUE_FILE ?? "out/queue.sqlite",
+  name: "market-updates",
   visibilityTimeoutMs: 3000,
   async handler({ messageId, body, deliveryCount }) {
     // Deal with body. Return and it is acknowledged.
@@ -293,26 +293,33 @@ A scenario is a JSON file listing things to do, in order.
   "marketSeed": "warmup-150",
   "queueDuplicateRate": 0,
   "actions": [
-    { "ref": "o1", "action": "place", "securityId": "SEC-1001", "side": "BUY",
-      "quantity": 100, "orderType": "LIMIT", "limitPriceMinor": 38500,
-      "note": "..." },
+    {
+      "ref": "o1",
+      "action": "place",
+      "securityId": "SEC-1001",
+      "side": "BUY",
+      "quantity": 100,
+      "orderType": "LIMIT",
+      "limitPriceMinor": 38500,
+      "note": "..."
+    },
     { "ref": "x1", "action": "cancel", "target": "o1", "note": "..." }
   ]
 }
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `ref` | A label for this action, so a later `cancel` can point at it. |
-| `action` | `place` or `cancel`. |
-| `target` | On a `cancel`, the `ref` of the `place` it refers to. |
-| `clientOrderId` | On a `place`, the caller's key for this request. Pass it through exactly as given. |
-| `clientOrderId` | On a `place`, the caller's key for the request. Pass it through exactly as given. |
-| `securityId` | On a `place`, the security by id. |
-| `symbol`, `venue` | On a `place`, the security by name. Some actions carry a symbol alone, some a symbol and a venue, and one carries a `securityId` **and** a `symbol` so that §9.1 rule 7 refuses it. See §9.0. |
-| `side`, `quantity`, `orderType`, `limitPriceMinor` | The order itself. |
-| `note` | A comment for a human. Your program ignores it. |
-| `marketSeed`, `queueDuplicateRate` | Settings for the tests. Your program ignores them. |
+| Field                                              | Meaning                                                                                                                                                                                       |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ref`                                              | A label for this action, so a later `cancel` can point at it.                                                                                                                                 |
+| `action`                                           | `place` or `cancel`.                                                                                                                                                                          |
+| `target`                                           | On a `cancel`, the `ref` of the `place` it refers to.                                                                                                                                         |
+| `clientOrderId`                                    | On a `place`, the caller's key for this request. Pass it through exactly as given.                                                                                                            |
+| `clientOrderId`                                    | On a `place`, the caller's key for the request. Pass it through exactly as given.                                                                                                             |
+| `securityId`                                       | On a `place`, the security by id.                                                                                                                                                             |
+| `symbol`, `venue`                                  | On a `place`, the security by name. Some actions carry a symbol alone, some a symbol and a venue, and one carries a `securityId` **and** a `symbol` so that §9.1 rule 7 refuses it. See §9.0. |
+| `side`, `quantity`, `orderType`, `limitPriceMinor` | The order itself.                                                                                                                                                                             |
+| `note`                                             | A comment for a human. Your program ignores it.                                                                                                                                               |
+| `marketSeed`, `queueDuplicateRate`                 | Settings for the tests. Your program ignores them.                                                                                                                                            |
 
 Your driver reads the file and works through `actions` from top to bottom. It:
 
@@ -326,10 +333,10 @@ Your driver reads the file and works through `actions` from top to bottom. It:
 
 There are two scenarios:
 
-| File | What is in it |
-| --- | --- |
-| `data/scenarios/warmup.json` | Five orders. Four trade, one is refused by the exchange. No cancels, no duplicate messages, no restart. Get this passing first. |
-| `data/scenarios/main.json` | 35 actions: 14 orders that are created, 14 `place` requests that are refused, one retry of an order that already exists, and 6 cancels of which one is refused. About a quarter of the exchange's messages are written to the queue twice. The tests kill your order-service 400 ms after the last action, while trade messages are still arriving, and start it again. |
+| File                         | What is in it                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data/scenarios/warmup.json` | Five orders. Four trade, one is refused by the exchange. No cancels, no duplicate messages, no restart. Get this passing first.                                                                                                                                                                                                                                         |
+| `data/scenarios/main.json`   | 35 actions: 14 orders that are created, 14 `place` requests that are refused, one retry of an order that already exists, and 6 cancels of which one is refused. About a quarter of the exchange's messages are written to the queue twice. The tests kill your order-service 400 ms after the last action, while trade messages are still arriving, and start it again. |
 
 ---
 
@@ -339,51 +346,51 @@ If it is not in this table, that arrival does not do it.
 
 ### 8.1 HTTP requests to order-service
 
-| Arrival | What changes | What is sent back |
-| --- | --- | --- |
-| `POST /orders` with a `clientOrderId` already used | Nothing. | `200` and the order that key already made |
-| `POST /orders` with a new `clientOrderId` | Checks §9.1 in order. If any fails, **nothing changes at all** — no order, no id used up. Otherwise: an order is created with the next order id; the caller's key and the security's details are stored on it; then the exchange is called and the `marketOrderId` it returns is saved. | `201` and the order, shaped as §12.1 |
-| `GET /orders/:orderId` | Nothing. | `200` and the order, or `404` `ORDER_NOT_FOUND` if there is no such order |
-| `GET /orders` | Nothing. | `200 { "orders": [...] }`, ordered by `orderId` |
-| `GET /orders?status=FILLED` | Nothing. | The same, narrowed to orders in that status. An unknown status is refused (§9.4). |
-| `DELETE /orders/:orderId` | Checks §9.2 in order. Otherwise: the exchange is asked to cancel, and the order is marked as having a cancel outstanding. **The order is not cancelled by this.** | `202` and the order |
-| `GET /health` | Nothing. | `200 { "status": "UP" }` |
+| Arrival                                            | What changes                                                                                                                                                                                                                                                                            | What is sent back                                                                 |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `POST /orders` with a `clientOrderId` already used | Nothing.                                                                                                                                                                                                                                                                                | `200` and the order that key already made                                         |
+| `POST /orders` with a new `clientOrderId`          | Checks §9.1 in order. If any fails, **nothing changes at all** — no order, no id used up. Otherwise: an order is created with the next order id; the caller's key and the security's details are stored on it; then the exchange is called and the `marketOrderId` it returns is saved. | `201` and the order, shaped as §12.1                                              |
+| `GET /orders/:orderId`                             | Nothing.                                                                                                                                                                                                                                                                                | `200` and the order, or `404` `ORDER_NOT_FOUND` if there is no such order         |
+| `GET /orders`                                      | Nothing.                                                                                                                                                                                                                                                                                | `200 { "orders": [...] }`, ordered by `orderId`                                   |
+| `GET /orders?status=FILLED`                        | Nothing.                                                                                                                                                                                                                                                                                | The same, narrowed to orders in that status. An unknown status is refused (§9.4). |
+| `DELETE /orders/:orderId`                          | Checks §9.2 in order. Otherwise: the exchange is asked to cancel, and the order is marked as having a cancel outstanding. **The order is not cancelled by this.**                                                                                                                       | `202` and the order                                                               |
+| `GET /health`                                      | Nothing.                                                                                                                                                                                                                                                                                | `200 { "status": "UP" }`                                                          |
 
 ### 8.2 Messages from the queue
 
 Every message carries `messageId`, `sequence`, `marketOrderId`, `clientOrderId`, `occurredAt` and `type`. Find the order by `marketOrderId`.
 
-`sequence` counts the messages the exchange has *sent* about that one order, starting at 1. It is not a delivery order and it does not count anything of yours. Because the first message about an order is normally `ACCEPTED`, the first execution usually carries `sequence` 2 — order 2's four executions are numbered 2, 3, 4 and 5. Sort executions by it; do not expect it to start at 1 or to have no gaps.
+`sequence` counts the messages the exchange has _sent_ about that one order, starting at 1. It is not a delivery order and it does not count anything of yours. Because the first message about an order is normally `ACCEPTED`, the first execution usually carries `sequence` 2 — order 2's four executions are numbered 2, 3, 4 and 5. Sort executions by it; do not expect it to start at 1 or to have no gaps.
 
-| `type` | What changes | Also carries |
-| --- | --- | --- |
-| `ACCEPTED` | The order is marked as accepted by the exchange. | — |
-| `FILL` | An execution is recorded against the order. **If an execution with this `execId` is already recorded, nothing changes.** | `execId`, `lastQuantity`, `lastPriceMinor`, and `sequence` like every message |
-| `REJECTED` | The order's reject reason is set. | `reason` |
-| `CANCELLED` | The order's cancel outcome is set to `CANCELLED`. | — |
-| `CANCEL_REJECTED` | The order's cancel outcome is set to `REJECTED` and the reason is kept. **The order is not cancelled — it carries on.** | `reason` |
+| `type`            | What changes                                                                                                             | Also carries                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `ACCEPTED`        | The order is marked as accepted by the exchange.                                                                         | —                                                                             |
+| `FILL`            | An execution is recorded against the order. **If an execution with this `execId` is already recorded, nothing changes.** | `execId`, `lastQuantity`, `lastPriceMinor`, and `sequence` like every message |
+| `REJECTED`        | The order's reject reason is set.                                                                                        | `reason`                                                                      |
+| `CANCELLED`       | The order's cancel outcome is set to `CANCELLED`.                                                                        | —                                                                             |
+| `CANCEL_REJECTED` | The order's cancel outcome is set to `REJECTED` and the reason is kept. **The order is not cancelled — it carries on.**  | `reason`                                                                      |
 
 A `FILL` message and the execution you store from it do not use the same names. The message is the exchange's wording; the execution is yours, and §12.1 is what the tests read:
 
-| Message field | Execution field |
-| --- | --- |
-| `execId` | `execId` |
-| `sequence` | `sequence` |
-| `lastQuantity` | `executedQuantity` |
-| `lastPriceMinor` | `priceMinor` |
-| `occurredAt` | `occurredAt` |
+| Message field    | Execution field    |
+| ---------------- | ------------------ |
+| `execId`         | `execId`           |
+| `sequence`       | `sequence`         |
+| `lastQuantity`   | `executedQuantity` |
+| `lastPriceMinor` | `priceMinor`       |
+| `occurredAt`     | `occurredAt`       |
 
-**The one automatic consequence.** After applying any of the above, if the order is now finished *and* has at least one execution, it is sent to the ledger — once — as described in §10.6 and §12.2. Nothing else happens automatically.
+**The one automatic consequence.** After applying any of the above, if the order is now finished _and_ has at least one execution, it is sent to the ledger — once — as described in §10.6 and §12.2. Nothing else happens automatically.
 
 If no order can be found for the `marketOrderId`, throw. The message will be delivered again, by which time your `POST /orders` will have finished writing the id down.
 
 ### 8.3 The report trigger
 
-| Arrival | What changes |
-| --- | --- |
-| `POST /generate-report` on ledger-service | A report is written. See §12.3. |
-| The 5-minute timer | The same report is written, by the same code. |
-| `npm run report` | The same again, from the command line. |
+| Arrival                                   | What changes                                  |
+| ----------------------------------------- | --------------------------------------------- |
+| `POST /generate-report` on ledger-service | A report is written. See §12.3.               |
+| The 5-minute timer                        | The same report is written, by the same code. |
+| `npm run report`                          | The same again, from the command line.        |
 
 ---
 
@@ -401,11 +408,11 @@ The tests read `error`. `message` is yours and is never compared.
 
 A request names its security in one of three ways, and picking the right one is the first real job order-service does.
 
-| The request carries | What to do |
-| --- | --- |
-| `securityId` | Ask `GET /info/:securityId`. One answer or a 404. |
-| `symbol` on its own | Ask `GET /search?symbol=`. **One** result: that is the security. **None**: refuse. **More than one**: refuse — the symbol does not say which one is meant, and guessing is how the wrong exchange gets an order. |
-| `symbol` and `venue` | Ask `GET /search?symbol=`, then keep the results whose `venue` matches. One left: that is it. None left: refuse. |
+| The request carries  | What to do                                                                                                                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `securityId`         | Ask `GET /info/:securityId`. One answer or a 404.                                                                                                                                                                |
+| `symbol` on its own  | Ask `GET /search?symbol=`. **One** result: that is the security. **None**: refuse. **More than one**: refuse — the symbol does not say which one is meant, and guessing is how the wrong exchange gets an order. |
+| `symbol` and `venue` | Ask `GET /search?symbol=`, then keep the results whose `venue` matches. One left: that is it. None left: refuse.                                                                                                 |
 
 `AAPL`, `MSFT`, `RY` and `ENB` are each listed once, so a symbol on its own is enough. `SHOP` is listed twice, so it never is. Whichever way the request arrived, what gets stored on the order is the `securityId` that came back — the rest of the system only ever deals in ids.
 
@@ -419,24 +426,24 @@ Two things happen before any of the checks below.
 
 Only a request whose key nobody has used reaches the checks. They are applied in this order, the first failure is the one reported, and when one fails **nothing is created and no order id is used up**.
 
-| # | Condition | Status | `error` |
-| --- | --- | --- | --- |
-| 1 | `clientOrderId` is missing, not a string, or blank | 400 | `MISSING_CLIENT_ORDER_ID` |
-| 2 | `side` is not `BUY` or `SELL` | 400 | `INVALID_SIDE` |
-| 3 | `orderType` is not `MARKET` or `LIMIT` | 400 | `INVALID_ORDER_TYPE` |
-| 4 | `quantity` is not a whole number above zero | 400 | `INVALID_QUANTITY` |
-| 5 | `orderType` is `LIMIT` and there is no whole-number `limitPriceMinor` | 400 | `MISSING_LIMIT_PRICE` |
-| 6 | `orderType` is `MARKET` and a `limitPriceMinor` was sent | 400 | `UNEXPECTED_LIMIT_PRICE` |
-| 7 | neither `securityId` nor `symbol` was given | 400 | `MISSING_SECURITY` |
-| 8 | both `securityId` and `symbol` were given | 400 | `AMBIGUOUS_SECURITY` |
-| 9 | `securityId` was given together with a `venue` | 400 | `UNEXPECTED_VENUE` |
-| 10 | `securityId` was given and security-service answers 404 | 404 | `UNKNOWN_SECURITY` |
-| 11 | `symbol` was given and the search finds nothing | 404 | `UNKNOWN_SYMBOL` |
-| 12 | `symbol` and `venue` were given and nothing is listed at that venue | 404 | `SYMBOL_NOT_AT_VENUE` |
-| 13 | `symbol` alone was given and more than one security trades under it | 422 | `AMBIGUOUS_SYMBOL` |
-| 14 | the security's `status` is not `ACTIVE` | 422 | `SECURITY_NOT_TRADABLE` |
-| 15 | `quantity` is not a multiple of `lotSize` | 422 | `INVALID_LOT_SIZE` |
-| 16 | `orderType` is `LIMIT` and `limitPriceMinor` is not a multiple of `tickSizeMinor` | 422 | `INVALID_PRICE_TICK` |
+| #   | Condition                                                                         | Status | `error`                   |
+| --- | --------------------------------------------------------------------------------- | ------ | ------------------------- |
+| 1   | `clientOrderId` is missing, not a string, or blank                                | 400    | `MISSING_CLIENT_ORDER_ID` |
+| 2   | `side` is not `BUY` or `SELL`                                                     | 400    | `INVALID_SIDE`            |
+| 3   | `orderType` is not `MARKET` or `LIMIT`                                            | 400    | `INVALID_ORDER_TYPE`      |
+| 4   | `quantity` is not a whole number above zero                                       | 400    | `INVALID_QUANTITY`        |
+| 5   | `orderType` is `LIMIT` and there is no whole-number `limitPriceMinor`             | 400    | `MISSING_LIMIT_PRICE`     |
+| 6   | `orderType` is `MARKET` and a `limitPriceMinor` was sent                          | 400    | `UNEXPECTED_LIMIT_PRICE`  |
+| 7   | neither `securityId` nor `symbol` was given                                       | 400    | `MISSING_SECURITY`        |
+| 8   | both `securityId` and `symbol` were given                                         | 400    | `AMBIGUOUS_SECURITY`      |
+| 9   | `securityId` was given together with a `venue`                                    | 400    | `UNEXPECTED_VENUE`        |
+| 10  | `securityId` was given and security-service answers 404                           | 404    | `UNKNOWN_SECURITY`        |
+| 11  | `symbol` was given and the search finds nothing                                   | 404    | `UNKNOWN_SYMBOL`          |
+| 12  | `symbol` and `venue` were given and nothing is listed at that venue               | 404    | `SYMBOL_NOT_AT_VENUE`     |
+| 13  | `symbol` alone was given and more than one security trades under it               | 422    | `AMBIGUOUS_SYMBOL`        |
+| 14  | the security's `status` is not `ACTIVE`                                           | 422    | `SECURITY_NOT_TRADABLE`   |
+| 15  | `quantity` is not a multiple of `lotSize`                                         | 422    | `INVALID_LOT_SIZE`        |
+| 16  | `orderType` is `LIMIT` and `limitPriceMinor` is not a multiple of `tickSizeMinor` | 422    | `INVALID_PRICE_TICK`      |
 
 The order matters: a `MARKET` order for an unknown security with a quantity of zero is `INVALID_QUANTITY`, because 4 comes before 10. Rules 1 to 9 can all be decided without asking anybody. Rules 10 to 16 need security-service.
 
@@ -448,32 +455,32 @@ A `502` from market-service is the one case that behaves differently from the si
 
 ### 9.2 `DELETE /orders/:orderId` on order-service
 
-| # | Condition | Status | `error` |
-| --- | --- | --- | --- |
-| 1 | no order with that id | 404 | `ORDER_NOT_FOUND` |
-| 2 | the order is already finished (§10.1) | 409 | `ORDER_NOT_ACTIVE` |
-| 3 | a cancel is already outstanding and unanswered | 409 | `CANCEL_ALREADY_REQUESTED` |
-| 4 | the exchange has not been told about the order yet — which can only happen after a `502` from market-service, see §9.1 | 409 | `ORDER_NOT_AT_MARKET` |
+| #   | Condition                                                                                                              | Status | `error`                    |
+| --- | ---------------------------------------------------------------------------------------------------------------------- | ------ | -------------------------- |
+| 1   | no order with that id                                                                                                  | 404    | `ORDER_NOT_FOUND`          |
+| 2   | the order is already finished (§10.1)                                                                                  | 409    | `ORDER_NOT_ACTIVE`         |
+| 3   | a cancel is already outstanding and unanswered                                                                         | 409    | `CANCEL_ALREADY_REQUESTED` |
+| 4   | the exchange has not been told about the order yet — which can only happen after a `502` from market-service, see §9.1 | 409    | `ORDER_NOT_AT_MARKET`      |
 
 ### 9.3 Anything else, on either service
 
-| Condition | Status | `error` |
-| --- | --- | --- |
-| `GET /orders?status=` with something that is not one of the eight statuses in §10.1 | 400 | `INVALID_STATUS` |
-| a request body that is not valid JSON | 400 | `MALFORMED_JSON` |
-| a path that is not one of the routes in §12 | 404 | `NOT_FOUND` |
+| Condition                                                                           | Status | `error`          |
+| ----------------------------------------------------------------------------------- | ------ | ---------------- |
+| `GET /orders?status=` with something that is not one of the eight statuses in §10.1 | 400    | `INVALID_STATUS` |
+| a request body that is not valid JSON                                               | 400    | `MALFORMED_JSON` |
+| a path that is not one of the routes in §12                                         | 404    | `NOT_FOUND`      |
 
 The last two matter because Express answers with an HTML error page if you let it. Everything your services say should be JSON in the shape above, including the things you did not plan for.
 
 ### 9.4 `POST /post-order` on ledger-service
 
-| # | Condition | Status | `error` |
-| --- | --- | --- | --- |
-| 1 | `orderId` is not a whole number | 400 | `INVALID_ORDER_ID` |
-| 2 | `executions` is missing, not an array, or empty | 400 | `NO_EXECUTIONS` |
-| 3 | any of `securityId`, `symbol`, `venue`, `currency`, `assetType`, `side`, `finalStatus` is missing | 400 | `MISSING_FIELD` |
-| 4 | `contractMultiplier` is not a whole number above zero | 400 | `INVALID_CONTRACT_MULTIPLIER` |
-| 5 | **this `orderId` is already in the ledger** | 409 | `ORDER_ALREADY_POSTED` |
+| #   | Condition                                                                                         | Status | `error`                       |
+| --- | ------------------------------------------------------------------------------------------------- | ------ | ----------------------------- |
+| 1   | `orderId` is not a whole number                                                                   | 400    | `INVALID_ORDER_ID`            |
+| 2   | `executions` is missing, not an array, or empty                                                   | 400    | `NO_EXECUTIONS`               |
+| 3   | any of `securityId`, `symbol`, `venue`, `currency`, `assetType`, `side`, `finalStatus` is missing | 400    | `MISSING_FIELD`               |
+| 4   | `contractMultiplier` is not a whole number above zero                                             | 400    | `INVALID_CONTRACT_MULTIPLIER` |
+| 5   | **this `orderId` is already in the ledger**                                                       | 409    | `ORDER_ALREADY_POSTED`        |
 
 Rule 5 is the important one. The ledger does not merge, does not update and does not quietly ignore. It refuses, and **nothing it already holds changes**, even if the second version says something completely different. The tests post a tampered copy of a real order and check that the ledger still says what it said before.
 
@@ -489,20 +496,20 @@ None of these is stored. Each is computed from the order and its executions when
 
 Checked in this order — the **first** match wins:
 
-| # | If | Then `status` is |
-| --- | --- | --- |
-| 1 | a reject reason has been set | `REJECTED` |
-| 2 | filled quantity ≥ ordered quantity | `FILLED` |
-| 3 | the cancel outcome is `CANCELLED` | `CANCELLED` |
-| 4 | a cancel is outstanding with no outcome yet | `PENDING_CANCEL` |
-| 5 | filled quantity is above zero | `PARTIALLY_FILLED` |
-| 6 | an `ACCEPTED` message has arrived | `WORKING` |
-| 7 | a `marketOrderId` has been saved | `PENDING_NEW` |
-| 8 | otherwise | `NEW` |
+| #   | If                                          | Then `status` is   |
+| --- | ------------------------------------------- | ------------------ |
+| 1   | a reject reason has been set                | `REJECTED`         |
+| 2   | filled quantity ≥ ordered quantity          | `FILLED`           |
+| 3   | the cancel outcome is `CANCELLED`           | `CANCELLED`        |
+| 4   | a cancel is outstanding with no outcome yet | `PENDING_CANCEL`   |
+| 5   | filled quantity is above zero               | `PARTIALLY_FILLED` |
+| 6   | an `ACCEPTED` message has arrived           | `WORKING`          |
+| 7   | a `marketOrderId` has been saved            | `PENDING_NEW`      |
+| 8   | otherwise                                   | `NEW`              |
 
 An order is **finished** when its status is `REJECTED`, `FILLED` or `CANCELLED`.
 
-You never have to *guard* against a finished order changing. Because the status is worked out by the precedence above, a late message cannot move a finished order backwards on its own. **So do not ignore messages that arrive for a finished order — keep recording what they say.** Order 3 is exactly this case: it is already `FILLED`, and already in the ledger, when its `CANCEL_REJECTED` arrives. Ignore that message and its `cancelOutcome` and `cancelRejectReason` stay `null`, which is wrong. Record it, and the status stays `FILLED` anyway, because rule 2 is reached before any cancel rule.
+You never have to _guard_ against a finished order changing. Because the status is worked out by the precedence above, a late message cannot move a finished order backwards on its own. **So do not ignore messages that arrive for a finished order — keep recording what they say.** Order 3 is exactly this case: it is already `FILLED`, and already in the ledger, when its `CANCEL_REJECTED` arrives. Ignore that message and its `cancelOutcome` and `cancelRejectReason` stay `null`, which is wrong. Record it, and the status stays `FILLED` anyway, because rule 2 is reached before any cancel rule.
 
 This ordering is what makes the answer independent of which message arrived first, and it is why the last message about an order does not decide its state. Worked example, order 3 of the main scenario: a cancel is asked for, the exchange refuses it (`CANCEL_REJECTED`, reason `ALREADY_FILLED`), and the order finishes fully traded. Its cancel outcome is `REJECTED`, and rule 2 fires before any cancel rule is reached, so its status is `FILLED` — and because it traded, it belongs in the ledger. **Asking to cancel an order does not stop it trading.**
 
@@ -547,13 +554,13 @@ Once, ever. Write down that it has been sent, and never send it again.
 
 This is not the same as "filled", and the difference is the point:
 
-| Order in the main scenario | Status | Filled | In the ledger? |
-| --- | --- | --- | --- |
-| 4 — cancelled, never traded | `CANCELLED` | 0 | **no** — there is nothing to record |
-| 5 — cancelled after part of it traded | `CANCELLED` | 250 | **yes** — 250 shares really were bought |
-| 3 — cancel refused, traded in full | `FILLED` | 250 | **yes** |
-| 11 — refused by the exchange | `REJECTED` | 0 | **no** |
-| 13 — cancelled after part of it traded | `CANCELLED` | 1 | **yes** |
+| Order in the main scenario             | Status      | Filled | In the ledger?                          |
+| -------------------------------------- | ----------- | ------ | --------------------------------------- |
+| 4 — cancelled, never traded            | `CANCELLED` | 0      | **no** — there is nothing to record     |
+| 5 — cancelled after part of it traded  | `CANCELLED` | 250    | **yes** — 250 shares really were bought |
+| 3 — cancel refused, traded in full     | `FILLED`    | 250    | **yes**                                 |
+| 11 — refused by the exchange           | `REJECTED`  | 0      | **no**                                  |
+| 13 — cancelled after part of it traded | `CANCELLED` | 1      | **yes**                                 |
 
 Send only the filled ones and you lose 250 shares of `RY` and an option contract. Send everything that finished and the ledger refuses the empty ones with `NO_EXECUTIONS`.
 
@@ -573,10 +580,19 @@ This is the shape of the thing. Yours does not have to look like this, but whate
 export class Order {
   #executions = new Map(); // execId -> Execution
 
-  constructor({ orderId, clientOrderId, security, side, quantity, orderType, limitPriceMinor, createdAt }) {
+  constructor({
+    orderId,
+    clientOrderId,
+    security,
+    side,
+    quantity,
+    orderType,
+    limitPriceMinor,
+    createdAt,
+  }) {
     this.orderId = orderId;
     this.clientOrderId = clientOrderId; // the caller's, not yours - see §4.2
-    this.security = security;   // the whole security, as security-service gave it
+    this.security = security; // the whole security, as security-service gave it
     this.side = side;
     this.quantity = quantity;
     this.orderType = orderType;
@@ -588,7 +604,7 @@ export class Order {
     this.acceptedByMarket = false;
     this.rejectReason = null;
     this.cancelRequestedAt = null;
-    this.cancelOutcome = null;      // null | 'CANCELLED' | 'REJECTED'
+    this.cancelOutcome = null; // null | 'CANCELLED' | 'REJECTED'
     this.cancelRejectReason = null;
     this.postedToLedgerAt = null;
   }
@@ -601,7 +617,9 @@ export class Order {
   }
 
   get executions() {
-    return [...this.#executions.values()].sort((a, b) => a.sequence - b.sequence);
+    return [...this.#executions.values()].sort(
+      (a, b) => a.sequence - b.sequence,
+    );
   }
 
   get filledQuantity() {
@@ -615,23 +633,27 @@ export class Order {
   get averagePriceMinor() {
     const filled = this.filledQuantity;
     if (filled === 0) return null;
-    const value = this.executions.reduce((t, e) => t + e.executedQuantity * e.priceMinor, 0);
+    const value = this.executions.reduce(
+      (t, e) => t + e.executedQuantity * e.priceMinor,
+      0,
+    );
     return Math.round(value / filled);
   }
 
   get status() {
-    if (this.rejectReason !== null) return 'REJECTED';
-    if (this.filledQuantity >= this.quantity) return 'FILLED';
-    if (this.cancelOutcome === 'CANCELLED') return 'CANCELLED';
-    if (this.cancelRequestedAt !== null && this.cancelOutcome === null) return 'PENDING_CANCEL';
-    if (this.filledQuantity > 0) return 'PARTIALLY_FILLED';
-    if (this.acceptedByMarket) return 'WORKING';
-    if (this.marketOrderId !== null) return 'PENDING_NEW';
-    return 'NEW';
+    if (this.rejectReason !== null) return "REJECTED";
+    if (this.filledQuantity >= this.quantity) return "FILLED";
+    if (this.cancelOutcome === "CANCELLED") return "CANCELLED";
+    if (this.cancelRequestedAt !== null && this.cancelOutcome === null)
+      return "PENDING_CANCEL";
+    if (this.filledQuantity > 0) return "PARTIALLY_FILLED";
+    if (this.acceptedByMarket) return "WORKING";
+    if (this.marketOrderId !== null) return "PENDING_NEW";
+    return "NEW";
   }
 
   get isTerminal() {
-    return ['REJECTED', 'FILLED', 'CANCELLED'].includes(this.status);
+    return ["REJECTED", "FILLED", "CANCELLED"].includes(this.status);
   }
 
   get belongsInLedger() {
@@ -642,7 +664,7 @@ export class Order {
 
 ### What it deliberately does not have
 
-There is no `status` field, no `filledQuantity` field, no `averagePrice` field, no `leavesQuantity` field. Every one of those is a `get`, worked out from the executions at the moment it is asked for. The fields that do exist are all things that *happened* and were recorded once: the exchange accepted it, the exchange rejected it with this reason, a cancel was asked for at this time.
+There is no `status` field, no `filledQuantity` field, no `averagePrice` field, no `leavesQuantity` field. Every one of those is a `get`, worked out from the executions at the moment it is asked for. The fields that do exist are all things that _happened_ and were recorded once: the exchange accepted it, the exchange rejected it with this reason, a cancel was asked for at this time.
 
 The executions live in a `Map` keyed by `execId` rather than an array, for one reason: `addExecution` has to be safe to call twice with the same execution, because the queue will hand you the same execution twice.
 
@@ -675,33 +697,33 @@ This is worth understanding beyond this assignment. A derived value in a column 
 
 `{ "orders": [ ... ] }`, ordered by `orderId` ascending. Each order:
 
-| Field | Type | What it is |
-| --- | --- | --- |
-| `orderId` | number | Whole numbers counting up from 1. A refused request never uses one. |
-| `clientOrderId` | string | Exactly what the caller sent, untouched |
-| `marketOrderId` | string \| null | What the exchange called it; null until it has been told |
-| `securityId` | string | Whichever security §9.0 settled on — not necessarily what the request said |
-| `symbol` | string | From security-service |
-| `venue` | string | From security-service |
-| `currency` | string | From security-service |
-| `assetType` | string | From security-service |
-| `contractMultiplier` | number | From security-service |
-| `side` | string | From the request |
-| `quantity` | number | From the request |
-| `orderType` | string | From the request |
-| `limitPriceMinor` | number \| null | From the request; null for market orders |
-| `status` | string | §10.1 |
-| `filledQuantity` | number | §10.2 |
-| `leavesQuantity` | number | §10.3 |
-| `averagePriceMinor` | number \| null | §10.4 |
-| `grossNotionalMinor` | number | §10.5 |
-| `rejectReason` | string \| null | From the `REJECTED` message |
-| `cancelRequested` | boolean | Whether a `DELETE` was accepted for this order |
-| `cancelOutcome` | string \| null | `CANCELLED`, `REJECTED`, or null if no answer yet |
-| `cancelRejectReason` | string \| null | From the `CANCEL_REJECTED` message |
-| `postedToLedger` | boolean | Whether the ledger has been told |
-| `createdAt` | string | ISO timestamp |
-| `executions` | array | Ordered by `sequence` ascending |
+| Field                | Type           | What it is                                                                 |
+| -------------------- | -------------- | -------------------------------------------------------------------------- |
+| `orderId`            | number         | Whole numbers counting up from 1. A refused request never uses one.        |
+| `clientOrderId`      | string         | Exactly what the caller sent, untouched                                    |
+| `marketOrderId`      | string \| null | What the exchange called it; null until it has been told                   |
+| `securityId`         | string         | Whichever security §9.0 settled on — not necessarily what the request said |
+| `symbol`             | string         | From security-service                                                      |
+| `venue`              | string         | From security-service                                                      |
+| `currency`           | string         | From security-service                                                      |
+| `assetType`          | string         | From security-service                                                      |
+| `contractMultiplier` | number         | From security-service                                                      |
+| `side`               | string         | From the request                                                           |
+| `quantity`           | number         | From the request                                                           |
+| `orderType`          | string         | From the request                                                           |
+| `limitPriceMinor`    | number \| null | From the request; null for market orders                                   |
+| `status`             | string         | §10.1                                                                      |
+| `filledQuantity`     | number         | §10.2                                                                      |
+| `leavesQuantity`     | number         | §10.3                                                                      |
+| `averagePriceMinor`  | number \| null | §10.4                                                                      |
+| `grossNotionalMinor` | number         | §10.5                                                                      |
+| `rejectReason`       | string \| null | From the `REJECTED` message                                                |
+| `cancelRequested`    | boolean        | Whether a `DELETE` was accepted for this order                             |
+| `cancelOutcome`      | string \| null | `CANCELLED`, `REJECTED`, or null if no answer yet                          |
+| `cancelRejectReason` | string \| null | From the `CANCEL_REJECTED` message                                         |
+| `postedToLedger`     | boolean        | Whether the ledger has been told                                           |
+| `createdAt`          | string         | ISO timestamp                                                              |
+| `executions`         | array          | Ordered by `sequence` ascending                                            |
 
 Each execution: `execId`, `sequence`, `executedQuantity`, `priceMinor`, `occurredAt`.
 
@@ -727,8 +749,12 @@ The tests replace `createdAt` and `occurredAt` with a placeholder before compari
   "side": "BUY",
   "finalStatus": "CANCELLED",
   "executions": [
-    { "execId": "EXEC-MKT-190euup-2", "executedQuantity": 250, "priceMinor": 15500,
-      "occurredAt": "2026-09-04T12:00:00.000Z" }
+    {
+      "execId": "EXEC-MKT-190euup-2",
+      "executedQuantity": 250,
+      "priceMinor": 15500,
+      "occurredAt": "2026-09-04T12:00:00.000Z"
+    }
   ]
 }
 ```
@@ -751,19 +777,19 @@ Both files: a header row, then rows, comma separated, `\n` line endings, and a f
 
 **`inventory-N.csv`** — the position in each security that has traded, one row each, ordered by `security_id`:
 
-| Column | What it is |
-| --- | --- |
-| `security_id` | |
-| `symbol` | |
-| `asset_type` | |
-| `venue` | |
-| `currency` | |
-| `contract_multiplier` | |
-| `buy_quantity` | Total `executedQuantity` across executions of orders whose side was `BUY` |
-| `sell_quantity` | The same for `SELL` |
-| `net_quantity` | `buy_quantity − sell_quantity`. Can be negative. |
-| `net_units` | `net_quantity × contract_multiplier` |
-| `trade_count` | How many executions, **not** how many orders |
+| Column                 | What it is                                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `security_id`          |                                                                                                            |
+| `symbol`               |                                                                                                            |
+| `asset_type`           |                                                                                                            |
+| `venue`                |                                                                                                            |
+| `currency`             |                                                                                                            |
+| `contract_multiplier`  |                                                                                                            |
+| `buy_quantity`         | Total `executedQuantity` across executions of orders whose side was `BUY`                                  |
+| `sell_quantity`        | The same for `SELL`                                                                                        |
+| `net_quantity`         | `buy_quantity − sell_quantity`. Can be negative.                                                           |
+| `net_units`            | `net_quantity × contract_multiplier`                                                                       |
+| `trade_count`          | How many executions, **not** how many orders                                                               |
 | `gross_notional_minor` | `sum of (executedQuantity × price_minor × contract_multiplier)` over every execution, buys and sells alike |
 
 The real first three rows, from `expected/main/inventory.csv`:
@@ -785,13 +811,13 @@ SEC-1007,AAPL 260116C250,OPTION,NASDAQ,USD,100,10,1,9,900,3,1380000
 
 **`venues-N.csv`** — one row per venue and currency, ordered by venue:
 
-| Column | What it is |
-| --- | --- |
-| `venue` | |
-| `currency` | |
-| `trade_count` | Executions at that venue |
-| `total_quantity` | Sum of `executedQuantity` over executions, buys and sells alike |
-| `gross_notional_minor` | As above |
+| Column                 | What it is                                                      |
+| ---------------------- | --------------------------------------------------------------- |
+| `venue`                |                                                                 |
+| `currency`             |                                                                 |
+| `trade_count`          | Executions at that venue                                        |
+| `total_quantity`       | Sum of `executedQuantity` over executions, buys and sells alike |
+| `gross_notional_minor` | As above                                                        |
 
 The whole of `expected/main/venues.csv`:
 
@@ -812,14 +838,14 @@ Write whatever you find useful to a log file. Nothing compares it, and the wordi
 
 ## 13. How you are marked
 
-| Weight | What |
-| --- | --- |
+| Weight  | What                                                                                                                                                                                                                    |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **30%** | Orders and executions are modelled so that filled quantity, average price and notional are worked out rather than stored, and the status column — if you keep one — is recomputed rather than maintained. §3, §10, §11. |
-| **25%** | The system survives duplicate messages, messages arriving in the wrong order, and order-service being killed and restarted mid-flight. |
-| **15%** | Working out which security is meant (§9.0), and every refusal in §9, with the right status and the right `error`, and none of them creating an order. |
-| **15%** | The ledger: each order posted exactly once, a second post refused with 409 and changing nothing, an order and its trades written together or not at all. |
-| **10%** | The report: right numbers, right columns, right order, numbered correctly. |
-| **5%** | Migrations that run from empty and are never applied twice; a sensible layout; `NOTES.md`. |
+| **25%** | The system survives duplicate messages, messages arriving in the wrong order, and order-service being killed and restarted mid-flight.                                                                                  |
+| **15%** | Working out which security is meant (§9.0), and every refusal in §9, with the right status and the right `error`, and none of them creating an order.                                                                   |
+| **15%** | The ledger: each order posted exactly once, a second post refused with 409 and changing nothing, an order and its trades written together or not at all.                                                                |
+| **10%** | The report: right numbers, right columns, right order, numbered correctly.                                                                                                                                              |
+| **5%**  | Migrations that run from empty and are never applied twice; a sensible layout; `NOTES.md`.                                                                                                                              |
 
 The first two are more than half the marks. They are the same thing viewed from two sides: if the answers are worked out rather than stored, duplicates and restarts stop mattering almost by themselves.
 
@@ -847,7 +873,7 @@ Every step ends with something you can run and see.
 
 ### What finished looks like
 
-Somebody asked to buy 100 shares, back in §1. By the end, order 1 has bought all 100 of them in two pieces at an average of 38525, and thirteen other orders have been through your system alongside it. One request arrived twice and became one order, not two. Order 3 was asked to cancel and traded anyway. Order 4 was cancelled before it traded and is nowhere in the ledger. Order 5 was cancelled *and* traded, and its 250 shares of RY are in the ledger where they belong. `SHOP` is two securities, +250 in Toronto and −150 in New York. Your order-service was killed halfway through and picked up where it left off. And `venues.csv` ends up saying, in three lines, everything that went through each exchange:
+Somebody asked to buy 100 shares, back in §1. By the end, order 1 has bought all 100 of them in two pieces at an average of 38525, and thirteen other orders have been through your system alongside it. One request arrived twice and became one order, not two. Order 3 was asked to cancel and traded anyway. Order 4 was cancelled before it traded and is nowhere in the ledger. Order 5 was cancelled _and_ traded, and its 250 shares of RY are in the ledger where they belong. `SHOP` is two securities, +250 in Toronto and −150 in New York. Your order-service was killed halfway through and picked up where it left off. And `venues.csv` ends up saying, in three lines, everything that went through each exchange:
 
 ```
 venue,currency,trade_count,total_quantity,gross_notional_minor

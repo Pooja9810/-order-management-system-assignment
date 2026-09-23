@@ -77,30 +77,5 @@ export async function fetchSecurity(body) {
 
   console.log("Final security:", security);
 
-  //check if security status = "ACTIVE"
-  if (security.status !== "ACTIVE") {
-    throw {
-      status: 422,
-      error: `SECURITY_NOT_TRADABLE`,
-    };
-  }
-
-  //`quantity` is not a multiple of `lotSize`
-  if (body.quantity % security.lotSize !== 0) {
-    throw {
-      status: 422,
-      error: `INVALID_LOT_SIZE`,
-    };
-  }
-
-  //`limitPriceMinor` is not a multiple of `tickSizeMinor`
-  if (body.orderType === "LIMIT") {
-    if (body.limitPriceMinor % security.tickSizeMinor !== 0) {
-      throw {
-        status: 422,
-        error: `INVALID_PRICE_TICK`,
-      };
-    }
-  }
   return security;
 }

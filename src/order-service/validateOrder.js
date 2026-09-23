@@ -1,5 +1,3 @@
-// import { fetchSecurityById } from "./securityHelper.js";
-
 export const validateOrderRequest = (orderRequest) => {
   if (!validateClientOrderId(orderRequest)) {
     return { status: 400, error: "MISSING_CLIENT_ORDER_ID" };
@@ -31,10 +29,6 @@ export const validateOrderRequest = (orderRequest) => {
   if (!validateVenue(orderRequest)) {
     return { status: 400, error: "UNEXPECTED_VENUE" };
   }
-  //...if()
-  //   if (!validateSymbol(orderResult)) {
-  //     return { status: 404, error: "UNKNOWN_SYMBOL" };
-  //   }
 };
 //1. Validating the clientOrderId
 export const validateClientOrderId = (orderRequest) => {
@@ -165,10 +159,33 @@ const validateVenue = (orderRequest) => {
     return true;
   }
 };
+//Validating security fields
+export const validateOrderWithSecurity = (orderRequest, security) => {
+  console.log(orderRequest, security);
 
-// //11. unknown symbol
-// const validateSymbol = (orderResult) => {
-//   console.log(
-//     `Checking if symbol is presnt in securities: ${orderResult.symbol}`,
-//   );
-// };
+  //check if security status = "ACTIVE"
+  if (security.status !== "ACTIVE") {
+    throw {
+      status: 422,
+      error: `SECURITY_NOT_TRADABLE`,
+    };
+  }
+
+  //`quantity` is not a multiple of `lotSize`
+  if (orderRequest.quantity % security.lotSize !== 0) {
+    throw {
+      status: 422,
+      error: `INVALID_LOT_SIZE`,
+    };
+  }
+
+  //`limitPriceMinor` is not a multiple of `tickSizeMinor`
+  if (orderRequest.orderType === "LIMIT") {
+    if (orderRequest.limitPriceMinor % security.tickSizeMinor !== 0) {
+      throw {
+        status: 422,
+        error: `INVALID_PRICE_TICK`,
+      };
+    }
+  }
+};

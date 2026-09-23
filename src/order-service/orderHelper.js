@@ -3,7 +3,6 @@ export const createOrder = (db, orderRequest, security) => {
     console.log(
       `About to create an order for clientOrderId: ${orderRequest.clientOrderId}`,
     );
-    //Check if clientOrderId is already in the db
 
     const stmt =
       db.prepare(`INSERT INTO orders (clientOrderId,securityId,symbol,venue,currency,assetType,

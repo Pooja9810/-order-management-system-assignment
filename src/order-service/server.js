@@ -10,7 +10,10 @@ import {
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
-import { validateOrderRequest } from "./validateOrder.js";
+import {
+  validateOrderRequest,
+  validateOrderWithSecurity,
+} from "./validateOrder.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -104,6 +107,15 @@ app.post("/orders", async (req, res) => {
 
     security = await fetchSecurity(orderRequest);
 
+    //Validating fields with security
+    const securityError = validateOrderWithSecurity(orderRequest, security);
+    //any error in validation
+    if (securityError) {
+      return res
+        .status(securityError.status)
+        .json({ error: securityError.error });
+    }
+
     //create an order inside the orders table
     const orderResult = createOrder(db, orderRequest, security);
 
@@ -112,13 +124,7 @@ app.post("/orders", async (req, res) => {
     return created(res, orderResult);
   } catch (err) {
     console.error(err);
-    // if (err.cause === "constraint failed") {
-    //   const existingOrder = getOrderByClientOrderId(
-    //     db,
-    //     orderRequest.clientOrderId,
-    //   );
-    //   return ok(res, existingOrder);
-    // }
+
     return res.status(err.status).json({ error: err.error });
   }
 });
@@ -151,21 +157,3 @@ app.get("/orders/:orderId", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
-
-// y {
-//     try {
-//       //calling fetchSecurity
-//       security = await fetchSecurity(orderRequest);
-//     } catch (error) {
-//       console.error(error);
-//       {
-//         return res.status(502).json({ error: "SECURITY_SERVICE_UNAVAILABLE" });
-//       }
-//     }
-//     const validationError = validateOrderRequest(orderRequest);
-//     //any error in validation
-//     if (validationError) {
-//       return res
-//         .status(validationError.status)
-//         .json({ error: validationError.error });
-//     }

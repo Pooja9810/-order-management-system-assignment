@@ -7,6 +7,7 @@ import {
   getOrderById,
   getAllOrders,
   getOrderByClientOrderId,
+  updateMarketOrderId,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
@@ -14,6 +15,7 @@ import {
   validateOrderRequest,
   validateOrderWithSecurity,
 } from "./validateOrder.js";
+import { callMarketService } from "./marketHelper.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -121,6 +123,18 @@ app.post("/orders", async (req, res) => {
 
     //Send the order as a response
     console.log("Order present in the orders table:", orderResult);
+
+    //Call the market service
+    const marketResponse = await callMarketService(orderResult);
+    console.log(marketResponse);
+
+    //update marketOrderId in  the orders db
+    updateMarketOrderId(db, orderResult.orderId, marketResponse.marketOrderId);
+
+    //View updated order
+    const viewOrder = getOrderById(db, orderResult.orderId);
+    console.log("View updated Order", viewOrder);
+
     return created(res, orderResult);
   } catch (err) {
     console.error(err);

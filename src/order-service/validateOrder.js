@@ -12,11 +12,11 @@ export const validateOrderRequest = (orderRequest) => {
     return { status: 400, error: "INVALID_QUANTITY" };
   }
   if (orderRequest.orderType === "LIMIT") {
-    if (!missingLimitPriceMinor(orderRequest)) {
+    if (missingLimitPriceMinor(orderRequest)) {
       return { status: 400, error: "MISSING_LIMIT_PRICE" };
     }
   } else if (orderRequest.orderType === "MARKET") {
-    if (!unexpectedLimitPrice(orderRequest)) {
+    if (unexpectedLimitPrice(orderRequest)) {
       return { status: 400, error: "UNEXPECTED_LIMIT_PRICE" };
     }
   }
@@ -87,9 +87,9 @@ const missingLimitPriceMinor = (orderRequest) => {
       !Number.isInteger(orderRequest.limitPriceMinor) ||
       orderRequest.limitPriceMinor <= 0
     ) {
-      return false;
-    } else {
       return true;
+    } else {
+      return false;
     }
   }
 };
@@ -101,10 +101,10 @@ const unexpectedLimitPrice = (orderRequest) => {
       "Checking limitPriceMinor for orderType MARKET:",
       orderRequest.limitPriceMinor,
     );
-    if (typeof orderRequest.limitPriceMinor !== "undefined") {
-      return false;
-    } else {
+    if (orderRequest.limitPriceMinor !== undefined) {
       return true;
+    } else {
+      return false;
     }
   }
 };
@@ -117,8 +117,8 @@ const missingSecurity = (orderRequest) => {
     orderRequest.securityId,
   );
   if (
-    typeof orderRequest.securityId !== "undefined" ||
-    typeof orderRequest.symbol !== "undefined"
+    orderRequest.securityId !== undefined ||
+    orderRequest.symbol !== undefined
   ) {
     return true;
   } else {
@@ -134,8 +134,8 @@ const ambiguousSecurity = (orderRequest) => {
     orderRequest.securityId,
   );
   if (
-    typeof orderRequest.securityId !== "undefined" &&
-    typeof orderRequest.symbol !== "undefined"
+    orderRequest.securityId !== undefined &&
+    orderRequest.symbol !== undefined
   ) {
     return false;
   } else {
@@ -151,8 +151,8 @@ const validateVenue = (orderRequest) => {
   );
 
   if (
-    typeof orderRequest.securityId !== "undefined" &&
-    typeof orderRequest.venue !== "undefined"
+    orderRequest.securityId !== undefined &&
+    orderRequest.venue !== undefined
   ) {
     return false;
   } else {

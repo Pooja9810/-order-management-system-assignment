@@ -63,10 +63,11 @@ export async function fetchSecurity(body) {
       );
 
       console.log("Venue Match:", venueMatch);
-
+      if (venueMatch.length === 1) {
+        security = venueMatch[0];
+      }
       //if symbol and venue both are given but dont match
-
-      if (venueMatch.length === 0) {
+      else if (venueMatch.length === 0) {
         throw {
           status: 404,
           error: `SYMBOL_NOT_AT_VENUE`,

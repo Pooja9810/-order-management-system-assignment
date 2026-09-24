@@ -55,3 +55,34 @@ export const updateMarketOrderId = (db, orderId, marketOrderId) => {
   );
   return stmt.get(marketOrderId, orderId);
 };
+
+//get order by marketOrderId
+
+export const getOrderByMarketOrderId = (db, marketOrderId) => {
+  let stmt = db.prepare("SELECT * FROM orders WHERE marketOrderId = ?");
+  return stmt.get(marketOrderId);
+};
+
+//update the acceptedByMarket field in orders db
+export const updateAcceptedByMarket = (db, marketOrderId) => {
+  let stmt = db.prepare(
+    "UPDATE orders SET acceptedByMarket = 1 where marketOrderId =? ",
+  );
+  return stmt.run(marketOrderId);
+};
+
+//insert into executions table
+
+export const insertIntoExecutions = (db, orderId, exec) => {
+  let stmt = db.prepare(
+    `INSERT INTO executions(execId, orderId,sequence, executedQuantity, priceMinor, occurredAt) values(?,?,?,?,?,?)`,
+  );
+  return stmt.run(
+    exec.execId,
+    orderId,
+    exec.sequence,
+    exec.lastQuantity,
+    exec.lastPriceMinor,
+    exec.occurredAt,
+  );
+};

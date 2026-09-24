@@ -8,14 +8,18 @@ import {
   getAllOrders,
   getOrderByClientOrderId,
   updateMarketOrderId,
+  getOrderByMarketOrderId,
+  updateAcceptedByMarket,
+  insertIntoExecutions,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
-import { created, ok } from "../helpers/serverHelper.js";
+import { badrequest, created, ok } from "../helpers/serverHelper.js";
 import {
   validateOrderRequest,
   validateOrderWithSecurity,
 } from "./validateOrder.js";
 import { callMarketService } from "./marketHelper.js";
+import { consume } from "../../scaffold/queue/index.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -167,6 +171,40 @@ app.get("/orders/:orderId", (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+//Using the message queue
+
+const consumer = consume({
+  file: process.env.QUEUE_FILE ?? "out/queue.sqlite",
+  name: "market-updates",
+  visibilityTimeoutMs: 3000,
+  async handler({ messageId, body, deliveryCount }) {
+    console.log("Queue message received:", body);
+    console.log("messageId:", messageId);
+    console.log("Delivery count", deliveryCount);
+
+    const order = getOrderByMarketOrderId(db, body.marketOrderId);
+    //if order is falsy
+    if (!order) {
+      throw new Error(`Order not found : ${body.marketOrderId}`);
+    }
+    //If the message received has type accepted
+    if (body.type === "ACCEPTED") {
+      updateAcceptedByMarket(db, body.marketOrderId);
+    }
+
+    //If the message received has type FILL
+    //we have to insert into exec table
+    if (body.type === "FILL") {
+      const fillType = insertIntoExecutions(db, order.orderId, body);
+      if (!fillType) {
+        return { status: 404, error: "Error while insert into execution" };
+      }
+    }
+  },
+});
+
+consumer.start();
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

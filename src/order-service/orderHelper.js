@@ -34,7 +34,59 @@ export const createOrder = (db, orderRequest, security) => {
 };
 
 export const getOrderById = (db, orderId) => {
-  return db.prepare("SELECT * FROM orders WHERE orderId = ?").get(orderId);
+  let order = db.prepare("SELECT * FROM orders WHERE orderId = ?").get(orderId);
+
+  const executions = getExecutionsByOrderId(db, orderId);
+  return orderResponse(order, executions);
+};
+
+//complete order including executions as a response to GET/orders:orderId
+export const orderResponse = (order, executions) => {
+  //calculate filledQuantity
+  let filledQuantity = 0;
+  for (const e of executions) {
+    filledQuantity += e.executedQuantity;
+  }
+
+  //calculate leavesQuantity
+  const leavesQuantity = Math.max(0, order.quantity - filledQuantity);
+
+  // calculate averagePriceMinor
+
+  let totalValue = 0;
+  let totalQuantity = 0;
+
+  for (const e of executions) {
+    totalQuantity += e.executedQuantity;
+    totalValue += e.executedQuantity * e.priceMinor;
+  }
+
+  const averagePriceMinor = Math.round(totalValue / totalQuantity);
+
+  //calculate grossNationalMinor
+  let grossNationalMinor = 0;
+
+  for (const e of executions) {
+    grossNationalMinor += e.executedQuantity * e.priceMinor;
+  }
+  grossNationalMinor *= order.contractMultiplier;
+
+  //assign status
+
+  return {
+    ...order,
+    filledQuantity,
+    leavesQuantity,
+    averagePriceMinor,
+    grossNationalMinor,
+  };
+};
+
+//get executions by orderId
+
+export const getExecutionsByOrderId = (db, orderId) => {
+  let stmt = db.prepare("SELECT * FROM executions WHERE orderId = ?");
+  return stmt.all(orderId);
 };
 
 export const getOrderByClientOrderId = (db, clientOrderId) => {

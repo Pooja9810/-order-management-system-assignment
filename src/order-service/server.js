@@ -13,7 +13,7 @@ import {
   insertIntoExecutions,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
-import { badrequest, created, ok } from "../helpers/serverHelper.js";
+import { created, ok } from "../helpers/serverHelper.js";
 import {
   validateOrderRequest,
   validateOrderWithSecurity,
@@ -197,6 +197,7 @@ const consumer = consume({
     //we have to insert into exec table
     if (body.type === "FILL") {
       const fillType = insertIntoExecutions(db, order.orderId, body);
+
       if (!fillType) {
         return { status: 404, error: "Error while insert into execution" };
       }

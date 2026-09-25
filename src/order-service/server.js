@@ -11,6 +11,7 @@ import {
   getOrderByMarketOrderId,
   updateAcceptedByMarket,
   insertIntoExecutions,
+  updateRejectReason,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
@@ -201,6 +202,12 @@ const consumer = consume({
       if (!fillType) {
         return { status: 404, error: "Error while insert into execution" };
       }
+    }
+
+    //If the message received has type REJECTED
+
+    if (body.type === "REJECTED") {
+      updateRejectReason(db, body, order.orderId);
     }
   },
 });

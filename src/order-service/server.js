@@ -173,6 +173,26 @@ app.get("/orders/:orderId", (req, res) => {
   }
 });
 
+//cancel an order
+app.delete("/orders/:orderId", (req, res) => {
+  const order = getOrderById(db, req.params.orderId);
+
+  //check four refusals
+  if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
+  if (
+    order.status === "FILLED" ||
+    order.status === "CANCELLED" ||
+    order.status === "REJECTED"
+  )
+    return res.status(409).json({ error: "ORDER_NOT_ACTIVE" });
+  if (order.cancelRequestedAt !== null && order.cancelOutcome === null) {
+    return res.status(409).json({ error: "CANCEL_ALREADY_REQUESTED" });
+  }
+  if (order.marketOrderId === null) {
+    return res.status(409).json({ error: "ORDER_NOT_AT_MARKET" });
+  }
+});
+//call market service
 //Using the message queue
 
 const consumer = consume({

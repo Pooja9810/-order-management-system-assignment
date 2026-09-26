@@ -37,6 +37,7 @@ export const createOrder = (db, orderRequest, security) => {
 export const getOrderById = (db, orderId) => {
   let order = db.prepare("SELECT * FROM orders WHERE orderId = ?").get(orderId);
 
+  if (!order) return null;
   const executions = getExecutionsByOrderId(db, orderId);
 
   //call complete order

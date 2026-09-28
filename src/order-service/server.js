@@ -8,10 +8,6 @@ import {
   getAllOrders,
   getOrderByClientOrderId,
   updateMarketOrderId,
-  getOrderByMarketOrderId,
-  updateAcceptedByMarket,
-  insertIntoExecutions,
-  updateRejectReason,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
@@ -20,6 +16,7 @@ import {
   validateOrderWithSecurity,
 } from "./validateOrder.js";
 import { createOrderInMarket } from "./marketHelper.js";
+import { consumerService } from "./marketConsumer.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -167,47 +164,13 @@ app.get("/orders/:orderId", (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+//call marketconsumer to ustilize message queue
+const marketConsumer = consumerService(db);
+if (!consumerService) {
+  console.log(`Error in market consumer service:${marketConsumer}`);
+}
 
 //Using the message queue
-
-const consumer = consume({
-  file: process.env.QUEUE_FILE ?? "out/queue.sqlite",
-  name: "market-updates",
-  visibilityTimeoutMs: 3000,
-  async handler({ messageId, body, deliveryCount }) {
-    console.log("Queue message received:", body);
-    console.log("messageId:", messageId);
-    console.log("Delivery count", deliveryCount);
-
-    const order = getOrderByMarketOrderId(db, body.marketOrderId);
-    //if order is falsy
-    if (!order) {
-      throw new Error(`Order not found : ${body.marketOrderId}`);
-    }
-    //If the message received has type accepted
-    if (body.type === "ACCEPTED") {
-      updateAcceptedByMarket(db, body.marketOrderId);
-    }
-
-    //If the message received has type FILL
-    //we have to insert into exec table
-    if (body.type === "FILL") {
-      const fillType = insertIntoExecutions(db, order.orderId, body);
-
-      if (!fillType) {
-        return { status: 404, error: "Error while insert into execution" };
-      }
-    }
-
-    //If the message received has type REJECTED
-
-    if (body.type === "REJECTED") {
-      updateRejectReason(db, body, order.orderId);
-    }
-  },
-});
-
-consumer.start();
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

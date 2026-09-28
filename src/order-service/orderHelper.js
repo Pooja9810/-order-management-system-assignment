@@ -46,3 +46,12 @@ export const getAllOrders = (db) => {
   let stmt = db.prepare("SELECT * FROM orders");
   return stmt.all();
 };
+
+//update marketOrderId in the orders table
+
+export const updateMarketOrderId = (db, orderId, marketOrderId) => {
+  let stmt = db.prepare(
+    "UPDATE orders SET marketOrderId = ? WHERE orderId = ?",
+  );
+  return stmt.get(marketOrderId, orderId);
+};

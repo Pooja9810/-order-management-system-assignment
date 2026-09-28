@@ -12,6 +12,7 @@ import {
   updateAcceptedByMarket,
   insertIntoExecutions,
   updateRejectReason,
+  updateCancelRequestedAt,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
@@ -19,7 +20,7 @@ import {
   validateOrderRequest,
   validateOrderWithSecurity,
 } from "./validateOrder.js";
-import { callMarketService } from "./marketHelper.js";
+import { callMarketService, cancelMarketOrder } from "./marketHelper.js";
 import { consume } from "../../scaffold/queue/index.js";
 
 const SCHEMA = `
@@ -173,8 +174,8 @@ app.get("/orders/:orderId", (req, res) => {
   }
 });
 
-//cancel an order
-app.delete("/orders/:orderId", (req, res) => {
+//cancel an order - when order is  filled, cancelled or rejected
+app.delete("/orders/:orderId", async (req, res) => {
   const order = getOrderById(db, req.params.orderId);
 
   //check four refusals
@@ -191,8 +192,19 @@ app.delete("/orders/:orderId", (req, res) => {
   if (order.marketOrderId === null) {
     return res.status(409).json({ error: "ORDER_NOT_AT_MARKET" });
   }
+
+  //call the cancel order fn
+  const cancelOrder = await cancelMarketOrder(order.marketOrderId);
+  console.log(cancelOrder);
+
+  //update the cancelRequestedAt field in the db
+  updateCancelRequestedAt(db, order.orderId);
+
+  //view updated order
+  const updatedOrder = getOrderById(db, order.orderId);
+  return res.status(202).json(updatedOrder);
 });
-//call market service
+
 //Using the message queue
 
 const consumer = consume({

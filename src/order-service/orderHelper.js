@@ -92,6 +92,13 @@ export const updateRejectReason = (db, body, orderId) => {
   return stmt.run(body.reason, orderId);
 };
 
+//update the cancelRequestedAt field in the db
+export const updateCancelRequestedAt = (db, orderId) => {
+  let stmt = db.prepare(
+    "UPDATE orders SET cancelRequestedAt = ? where orderId =? ",
+  );
+  return stmt.run(new Date().toISOString(), orderId);
+};
 //insert into executions table
 
 export const insertIntoExecutions = (db, orderId, exec) => {

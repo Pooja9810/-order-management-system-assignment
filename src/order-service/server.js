@@ -165,12 +165,7 @@ app.get("/orders/:orderId", (req, res) => {
   }
 });
 //call marketconsumer to ustilize message queue
-const marketConsumer = consumerService(db);
-if (!consumerService) {
-  console.log(`Error in market consumer service:${marketConsumer}`);
-}
-
-//Using the message queue
+consumerService(db);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

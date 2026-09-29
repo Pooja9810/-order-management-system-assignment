@@ -8,6 +8,7 @@ import {
   getAllOrders,
   getOrderByClientOrderId,
   updateMarketOrderId,
+  updateCancelRequestedAt,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
@@ -15,8 +16,8 @@ import {
   validateOrderRequest,
   validateOrderWithSecurity,
 } from "./validateOrder.js";
-import { createOrderInMarket } from "./marketHelper.js";
-import { consumerService } from "./marketConsumer.js";
+import { createOrderInMarket, cancelMarketOrder } from "./marketHelper.js";
+import { startMarketConsumerService } from "./marketConsumer.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -164,8 +165,39 @@ app.get("/orders/:orderId", (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-//call marketconsumer to ustilize message queue
-consumerService(db);
+
+//cancel an order - when order is  filled, cancelled or rejected
+app.delete("/orders/:orderId", async (req, res) => {
+  const order = getOrderById(db, req.params.orderId);
+
+  //check four refusals
+  if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
+  if (
+    order.status === "FILLED" ||
+    order.status === "CANCELLED" ||
+    order.status === "REJECTED"
+  )
+    return res.status(409).json({ error: "ORDER_NOT_ACTIVE" });
+  if (order.cancelRequestedAt !== null && order.cancelOutcome === null) {
+    return res.status(409).json({ error: "CANCEL_ALREADY_REQUESTED" });
+  }
+  if (order.marketOrderId === null) {
+    return res.status(409).json({ error: "ORDER_NOT_AT_MARKET" });
+  }
+
+  //call the cancel order fn
+  await cancelMarketOrder(order.marketOrderId);
+
+  //update the cancelRequestedAt field in the db
+  updateCancelRequestedAt(db, order.orderId);
+
+  //view updated order
+  const updatedOrder = getOrderById(db, order.orderId);
+  return res.status(202).json(updatedOrder);
+});
+
+//call marketconsumer to utilize message queue
+startMarketConsumerService(db);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

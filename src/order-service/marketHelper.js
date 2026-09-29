@@ -16,3 +16,15 @@ export const createOrderInMarket = async (marketRequest) => {
 
   return await response.json();
 };
+
+export const cancelMarketOrder = async (marketOrderId) => {
+  //delete request
+  const response = await fetch(
+    `http://127.0.0.1:4002/orders/${marketOrderId}`,
+    {
+      method: `DELETE`,
+    },
+  );
+
+  return await response.json();
+};

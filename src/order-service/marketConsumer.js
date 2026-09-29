@@ -9,7 +9,7 @@ import {
 
 //Using the message queue
 
-export const consumerService = (db) => {
+export const startMarketConsumerService = (db) => {
   const consumer = consume({
     file: process.env.QUEUE_FILE ?? "out/queue.sqlite",
     name: "market-updates",
@@ -27,14 +27,14 @@ export const consumerService = (db) => {
 
       if (body.type === "ACCEPTED") {
         handleAccepted(db, body);
-      }
-
-      if (body.type === "FILL") {
+      } else if (body.type === "FILL") {
         handleFill(db, order, body);
-      }
-
-      if (body.type === "REJECTED") {
+      } else if (body.type === "REJECTED") {
         handleReject(db, body, order);
+      } else {
+        console.log(
+          `Unhandled type ${body.type} for marketOrderId=${body.marketOrderId}  | orderId=${order.orderId}`,
+        );
       }
     },
   });

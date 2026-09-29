@@ -20,8 +20,8 @@ import {
   validateOrderRequest,
   validateOrderWithSecurity,
 } from "./validateOrder.js";
-import { callMarketService, cancelMarketOrder } from "./marketHelper.js";
-import { consume } from "../../scaffold/queue/index.js";
+import { createOrderInMarket, cancelMarketOrder } from "./marketHelper.js";
+import { consumerService } from "./marketConsumer.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -131,15 +131,11 @@ app.post("/orders", async (req, res) => {
     console.log("Order present in the orders table:", orderResult);
 
     //Call the market service
-    const marketResponse = await callMarketService(orderResult);
-    console.log(marketResponse);
+    const marketResponse = await createOrderInMarket(orderResult);
+    console.log("Order sent to market successfully:", marketResponse);
 
     //update marketOrderId in  the orders db
     updateMarketOrderId(db, orderResult.orderId, marketResponse.marketOrderId);
-
-    //View updated order
-    const viewOrder = getOrderById(db, orderResult.orderId);
-    console.log("View updated Order", viewOrder);
 
     return created(res, orderResult);
   } catch (err) {
@@ -173,78 +169,8 @@ app.get("/orders/:orderId", (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
-//cancel an order - when order is  filled, cancelled or rejected
-app.delete("/orders/:orderId", async (req, res) => {
-  const order = getOrderById(db, req.params.orderId);
-
-  //check four refusals
-  if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
-  if (
-    order.status === "FILLED" ||
-    order.status === "CANCELLED" ||
-    order.status === "REJECTED"
-  )
-    return res.status(409).json({ error: "ORDER_NOT_ACTIVE" });
-  if (order.cancelRequestedAt !== null && order.cancelOutcome === null) {
-    return res.status(409).json({ error: "CANCEL_ALREADY_REQUESTED" });
-  }
-  if (order.marketOrderId === null) {
-    return res.status(409).json({ error: "ORDER_NOT_AT_MARKET" });
-  }
-
-  //call the cancel order fn
-  const cancelOrder = await cancelMarketOrder(order.marketOrderId);
-  console.log(cancelOrder);
-
-  //update the cancelRequestedAt field in the db
-  updateCancelRequestedAt(db, order.orderId);
-
-  //view updated order
-  const updatedOrder = getOrderById(db, order.orderId);
-  return res.status(202).json(updatedOrder);
-});
-
-//Using the message queue
-
-const consumer = consume({
-  file: process.env.QUEUE_FILE ?? "out/queue.sqlite",
-  name: "market-updates",
-  visibilityTimeoutMs: 3000,
-  async handler({ messageId, body, deliveryCount }) {
-    console.log("Queue message received:", body);
-    console.log("messageId:", messageId);
-    console.log("Delivery count", deliveryCount);
-
-    const order = getOrderByMarketOrderId(db, body.marketOrderId);
-    //if order is falsy
-    if (!order) {
-      throw new Error(`Order not found : ${body.marketOrderId}`);
-    }
-    //If the message received has type accepted
-    if (body.type === "ACCEPTED") {
-      updateAcceptedByMarket(db, body.marketOrderId);
-    }
-
-    //If the message received has type FILL
-    //we have to insert into exec table
-    if (body.type === "FILL") {
-      const fillType = insertIntoExecutions(db, order.orderId, body);
-
-      if (!fillType) {
-        return { status: 404, error: "Error while insert into execution" };
-      }
-    }
-
-    //If the message received has type REJECTED
-
-    if (body.type === "REJECTED") {
-      updateRejectReason(db, body, order.orderId);
-    }
-  },
-});
-
-consumer.start();
+//call marketconsumer to ustilize message queue
+consumerService(db);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

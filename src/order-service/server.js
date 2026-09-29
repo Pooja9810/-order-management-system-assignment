@@ -17,7 +17,7 @@ import {
   validateOrderWithSecurity,
 } from "./validateOrder.js";
 import { createOrderInMarket, cancelMarketOrder } from "./marketHelper.js";
-import { consumerService } from "./marketConsumer.js";
+import { startMarketConsumerService } from "./marketConsumer.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -197,8 +197,8 @@ app.delete("/orders/:orderId", async (req, res) => {
   return res.status(202).json(updatedOrder);
 });
 
-//call marketconsumer to ustilize message queue
-consumerService(db);
+//call marketconsumer to utilize message queue
+startMarketConsumerService(db);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

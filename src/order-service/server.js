@@ -186,8 +186,7 @@ app.delete("/orders/:orderId", async (req, res) => {
   }
 
   //call the cancel order fn
-  const cancelOrder = await cancelMarketOrder(order.marketOrderId);
-  console.log(cancelOrder);
+  await cancelMarketOrder(order.marketOrderId);
 
   //update the cancelRequestedAt field in the db
   updateCancelRequestedAt(db, order.orderId);

@@ -27,14 +27,14 @@ export const startMarketConsumerService = (db) => {
 
       if (body.type === "ACCEPTED") {
         handleAccepted(db, body);
-      }
-
-      if (body.type === "FILL") {
+      } else if (body.type === "FILL") {
         handleFill(db, order, body);
-      }
-
-      if (body.type === "REJECTED") {
+      } else if (body.type === "REJECTED") {
         handleReject(db, body, order);
+      } else {
+        console.log(
+          `Unhandled type ${body.type} for marketOrderId=${body.marketOrderId}  | orderId=${order.orderId}`,
+        );
       }
     },
   });

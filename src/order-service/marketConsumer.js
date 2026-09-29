@@ -9,7 +9,7 @@ import {
 
 //Using the message queue
 
-export const consumerService = (db) => {
+export const startMarketConsumerService = (db) => {
   const consumer = consume({
     file: process.env.QUEUE_FILE ?? "out/queue.sqlite",
     name: "market-updates",

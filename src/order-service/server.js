@@ -8,10 +8,6 @@ import {
   getAllOrders,
   getOrderByClientOrderId,
   updateMarketOrderId,
-  getOrderByMarketOrderId,
-  updateAcceptedByMarket,
-  insertIntoExecutions,
-  updateRejectReason,
   updateCancelRequestedAt,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
@@ -169,6 +165,38 @@ app.get("/orders/:orderId", (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+//cancel an order - when order is  filled, cancelled or rejected
+app.delete("/orders/:orderId", async (req, res) => {
+  const order = getOrderById(db, req.params.orderId);
+
+  //check four refusals
+  if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
+  if (
+    order.status === "FILLED" ||
+    order.status === "CANCELLED" ||
+    order.status === "REJECTED"
+  )
+    return res.status(409).json({ error: "ORDER_NOT_ACTIVE" });
+  if (order.cancelRequestedAt !== null && order.cancelOutcome === null) {
+    return res.status(409).json({ error: "CANCEL_ALREADY_REQUESTED" });
+  }
+  if (order.marketOrderId === null) {
+    return res.status(409).json({ error: "ORDER_NOT_AT_MARKET" });
+  }
+
+  //call the cancel order fn
+  const cancelOrder = await cancelMarketOrder(order.marketOrderId);
+  console.log(cancelOrder);
+
+  //update the cancelRequestedAt field in the db
+  updateCancelRequestedAt(db, order.orderId);
+
+  //view updated order
+  const updatedOrder = getOrderById(db, order.orderId);
+  return res.status(202).json(updatedOrder);
+});
+
 //call marketconsumer to ustilize message queue
 consumerService(db);
 

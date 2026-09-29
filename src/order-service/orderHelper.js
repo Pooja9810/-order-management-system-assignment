@@ -1,3 +1,4 @@
+import { orderResponse } from "./completeOrder.js";
 export const createOrder = (db, orderRequest, security) => {
   try {
     console.log(
@@ -34,7 +35,21 @@ export const createOrder = (db, orderRequest, security) => {
 };
 
 export const getOrderById = (db, orderId) => {
-  return db.prepare("SELECT * FROM orders WHERE orderId = ?").get(orderId);
+  let order = db.prepare("SELECT * FROM orders WHERE orderId = ?").get(orderId);
+
+  if (!order) return null;
+  const executions = getExecutionsByOrderId(db, orderId);
+
+  //call complete order
+  const completeOrder = orderResponse(order, executions);
+  return completeOrder;
+};
+
+//get executions by orderId
+
+export const getExecutionsByOrderId = (db, orderId) => {
+  let stmt = db.prepare("SELECT * FROM executions WHERE orderId = ?");
+  return stmt.all(orderId);
 };
 
 export const getOrderByClientOrderId = (db, clientOrderId) => {
@@ -54,4 +69,41 @@ export const updateMarketOrderId = (db, orderId, marketOrderId) => {
     "UPDATE orders SET marketOrderId = ? WHERE orderId = ?",
   );
   return stmt.get(marketOrderId, orderId);
+};
+
+//get order by marketOrderId
+
+export const getOrderByMarketOrderId = (db, marketOrderId) => {
+  let stmt = db.prepare("SELECT * FROM orders WHERE marketOrderId = ?");
+  return stmt.get(marketOrderId);
+};
+
+//update the acceptedByMarket field in orders db
+export const updateAcceptedByMarket = (db, marketOrderId) => {
+  let stmt = db.prepare(
+    "UPDATE orders SET acceptedByMarket = 1 where marketOrderId =? ",
+  );
+  return stmt.run(marketOrderId);
+};
+
+//update the rejectReason of an order
+export const updateRejectReason = (db, body, orderId) => {
+  let stmt = db.prepare("UPDATE orders SET rejectReason = ? where orderId =? ");
+  return stmt.run(body.reason, orderId);
+};
+
+//insert into executions table
+
+export const insertIntoExecutions = (db, orderId, exec) => {
+  let stmt = db.prepare(
+    `INSERT INTO executions(execId, orderId,sequence, executedQuantity, priceMinor, occurredAt) values(?,?,?,?,?,?)`,
+  );
+  return stmt.run(
+    exec.execId,
+    orderId,
+    exec.sequence,
+    exec.lastQuantity,
+    exec.lastPriceMinor,
+    exec.occurredAt,
+  );
 };

@@ -16,6 +16,7 @@ import {
   validateOrderWithSecurity,
 } from "./validateOrder.js";
 import { createOrderInMarket } from "./marketHelper.js";
+import { consumerService } from "./marketConsumer.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -163,6 +164,8 @@ app.get("/orders/:orderId", (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+//call marketconsumer to ustilize message queue
+consumerService(db);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

@@ -87,9 +87,9 @@ export const updateAcceptedByMarket = (db, marketOrderId) => {
 };
 
 //update the rejectReason of an order
-export const updateRejectReason = (db, body, orderId) => {
+export const updateRejectReason = (db, orderId, reason) => {
   let stmt = db.prepare("UPDATE orders SET rejectReason = ? where orderId =? ");
-  return stmt.run(body.reason, orderId);
+  return stmt.run(reason, orderId);
 };
 
 //update the cancelRequestedAt field in the db
@@ -98,6 +98,27 @@ export const updateCancelRequestedAt = (db, orderId) => {
     "UPDATE orders SET cancelRequestedAt = ? where orderId =? ",
   );
   return stmt.run(new Date().toISOString(), orderId);
+};
+
+//update cancelOutcome to "cancelled"
+
+export const updateCancelOutcomeToCancelled = (db, marketOrderId) => {
+  let stmt = db.prepare(
+    "UPDATE orders SET cancelOutcome = 'CANCELLED' where marketOrderId = ?",
+  );
+  return stmt.run(marketOrderId);
+};
+
+//update cancelOutcome to 'CANCEL_REJECTED
+export const updateCancelOutcomeToCancelRejected = (
+  db,
+  marketOrderId,
+  reason,
+) => {
+  let stmt = db.prepare(
+    "UPDATE orders SET cancelOutcome = 'CANCEL_REJECTED',cancelRejectReason =? where marketOrderId = ?",
+  );
+  return stmt.run(reason, marketOrderId);
 };
 //insert into executions table
 

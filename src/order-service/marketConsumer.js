@@ -5,6 +5,8 @@ import {
   insertIntoExecutions,
   updateRejectReason,
   getOrderByMarketOrderId,
+  updateCancelOutcomeToCancelled,
+  updateCancelOutcomeToCancelRejected,
 } from "./orderHelper.js";
 
 //Using the message queue
@@ -31,6 +33,10 @@ export const startMarketConsumerService = (db) => {
         handleFill(db, order, body);
       } else if (body.type === "REJECTED") {
         handleReject(db, body, order);
+      } else if (body.type === "CANCELLED") {
+        handleCancel(db, body);
+      } else if (body.type === "CANCEL_REJECTED") {
+        handleCancelRejected(db, body);
       } else {
         console.log(
           `Unhandled type ${body.type} for marketOrderId=${body.marketOrderId}  | orderId=${order.orderId}`,
@@ -57,5 +63,15 @@ const handleFill = (db, order, body) => {
 };
 //If the message received has type REJECTED
 const handleReject = (db, body, order) => {
-  updateRejectReason(db, body, order.orderId);
+  updateRejectReason(db, order.orderId, body.reason);
+};
+
+//If msg received has type CANCELLED
+const handleCancel = (db, body) => {
+  updateCancelOutcomeToCancelled(db, body.marketOrderId);
+};
+
+//If msg received has type CANCEL_REJECTED
+const handleCancelRejected = (db, body) => {
+  updateCancelOutcomeToCancelRejected(db, body.marketOrderId, body.reason);
 };

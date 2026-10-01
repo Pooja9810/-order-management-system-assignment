@@ -135,3 +135,14 @@ export const insertIntoExecutions = (db, orderId, exec) => {
     exec.occurredAt,
   );
 };
+
+//check if status column exists
+
+export const statusExists = (db) => {
+  let stmt = db
+    .prepare(
+      "SELECT COUNT(*) as count FROM pragma_table_info('orders') WHERE name='status'",
+    )
+    .get();
+  return stmt.count > 0;
+};

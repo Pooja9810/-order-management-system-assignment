@@ -9,6 +9,7 @@ import {
   getOrderByClientOrderId,
   updateMarketOrderId,
   updateCancelRequestedAt,
+  statusExists,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
@@ -53,12 +54,20 @@ const SCHEMA = `
   )
   `;
 
+const addStatusColumn = `ALTER TABLE orders ADD COLUMN status TEXT DEFAULT "NEW"`;
+
 function openDb(file) {
   mkdirSync(dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA busy_timeout = 5000;");
   db.exec(SCHEMA);
+  //check if column status exists already
+  console.log("return value", statusExists(db));
+  if (!statusExists(db)) {
+    db.exec(addStatusColumn);
+    console.log("Status column added to the database");
+  }
   return db;
 }
 //Calling openDb so that db gets created

@@ -91,7 +91,9 @@ export const updateAcceptedByMarket = (db, marketOrderId) => {
 
 //update the rejectReason of an order
 export const updateRejectReason = (db, orderId, reason) => {
-  let stmt = db.prepare("UPDATE orders SET rejectReason = ? where orderId =? ");
+  let stmt = db.prepare(
+    "UPDATE orders SET rejectReason = ? where orderId =? returning *",
+  );
   return stmt.run(reason, orderId);
 };
 
@@ -151,19 +153,16 @@ export const statusExists = (db) => {
 };
 
 //Updating the status column after any change in executions table
-export const refreshStatus = (db, orderId) => {
-  const order = db
-    .prepare("SELECT * FROM orders WHERE orderId = ?")
-    .get(orderId);
-
-  const executions = getExecutionsByOrderId(db, orderId);
+export const refreshStatus = (db, order) => {
+  const executions = getExecutionsByOrderId(db, order.orderId);
   const filledQuantity = executions.reduce(
     (sum, e) => sum + e.executedQuantity,
     0,
   );
+
   const status = getStatus(order, filledQuantity);
   db.prepare("UPDATE orders SET status = ? WHERE orderId = ?").run(
     status,
-    orderId,
+    order.orderId,
   );
 };

@@ -19,6 +19,7 @@ import {
 } from "./validateOrder.js";
 import { createOrderInMarket, cancelMarketOrder } from "./marketHelper.js";
 import { startMarketConsumerService } from "./marketConsumer.js";
+import { valid_status } from "./constants.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -91,7 +92,7 @@ const PORT = 4003;
 app.use(express.json());
 
 app.get("/health", (req, res) => {
-  res.json({
+  return res.json({
     status: "UP",
   });
 });
@@ -155,7 +156,7 @@ app.get("/orders/:orderId", (req, res) => {
   try {
     const order = getOrderById(db, req.params.orderId);
     if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
-    res.json(order);
+    return res.json(order);
   } catch (error) {
     console.error("SQL error", error);
     res.status(500).json({ error: "Internal server error" });
@@ -167,17 +168,6 @@ app.get("/orders", (req, res) => {
   try {
     const { status } = req.query;
 
-    const valid_status = [
-      "NEW",
-      "PENDING_NEW",
-      "WORKING",
-      "PARTIALLY_FILLED",
-      "FILLED",
-      "CANCELLED",
-      "REJECTED",
-      "PENDING_CANCEL",
-    ];
-
     if (status && !valid_status.includes(status)) {
       return res.status(400).json({ error: "INVALID_STATUS" });
     }
@@ -188,7 +178,7 @@ app.get("/orders", (req, res) => {
       : //else get all orders
         getAllOrders(db);
 
-    res.json({ orders });
+    return res.json({ orders });
   } catch (error) {
     console.error("SQL error", error);
     res.status(500).json({ error: "Internal server error" });

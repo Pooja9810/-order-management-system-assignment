@@ -23,6 +23,7 @@ export const startMarketConsumerService = (db) => {
       console.log("Delivery count", deliveryCount);
 
       const order = getOrderByMarketOrderId(db, body.marketOrderId);
+
       //if order is falsy
       if (!order) {
         throw new Error(`Order not found : ${body.marketOrderId}`);
@@ -31,7 +32,7 @@ export const startMarketConsumerService = (db) => {
       if (body.type === "ACCEPTED") {
         handleAccepted(db, body, order);
       } else if (body.type === "FILL") {
-        handleFill(db, order, body);
+        handleFill(db, body, order);
       } else if (body.type === "REJECTED") {
         handleReject(db, body, order);
       } else if (body.type === "CANCELLED") {
@@ -51,14 +52,14 @@ export const startMarketConsumerService = (db) => {
 //If the message received has type accepted
 const handleAccepted = (db, body, order) => {
   updateAcceptedByMarket(db, body.marketOrderId);
-  refreshStatus(db, order.orderId);
+  refreshStatus(db, order);
 };
 
 //If the message received has type FILL
 //we have to insert into exec table
-const handleFill = (db, order, body) => {
+const handleFill = (db, body, order) => {
   const fillType = insertIntoExecutions(db, order.orderId, body);
-  refreshStatus(db, order.orderId);
+  refreshStatus(db, order);
 
   if (!fillType) {
     throw new Error(`Error while insert into execution : ${order.orderId}`);
@@ -67,17 +68,23 @@ const handleFill = (db, order, body) => {
 //If the message received has type REJECTED
 const handleReject = (db, body, order) => {
   updateRejectReason(db, order.orderId, body.reason);
-  refreshStatus(db, order.orderId);
+  //get order from db with rejectReason
+  const dbOrderWithRejectReason = getOrderByMarketOrderId(
+    db,
+    body.marketOrderId,
+  );
+  //pass the order with the reject reason in the db
+  refreshStatus(db, dbOrderWithRejectReason);
 };
 
 //If msg received has type CANCELLED
 const handleCancel = (db, body, order) => {
   updateCancelOutcomeToCancelled(db, body.marketOrderId);
-  refreshStatus(db, order.orderId);
+  refreshStatus(db, order);
 };
 
 //If msg received has type CANCEL_REJECTED
 const handleCancelRejected = (db, body, order) => {
   updateCancelOutcomeToCancelRejected(db, body.marketOrderId, body.reason);
-  refreshStatus(db, order.orderId);
+  refreshStatus(db, order);
 };

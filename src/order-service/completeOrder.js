@@ -34,19 +34,6 @@ export const orderResponse = (order, executions) => {
     }
     grossNotionalMinor *= order.contractMultiplier;
 
-    //assign status
-    const getStatus = (order, filledQuantity) => {
-      if (order.rejectReason !== null) return "REJECTED";
-      else if (filledQuantity >= order.quantity) return "FILLED";
-      else if (order.cancelOutcome === "CANCELLED") return "CANCELLED";
-      else if (order.cancelRequestedAt !== null && order.cancelOutcome === null)
-        return "PENDING_CANCEL";
-      else if (filledQuantity > 0) return "PARTIALLY_FILLED";
-      if (order.acceptedByMarket === 1) return "WORKING";
-      if (order.marketOrderId !== null) return "PENDING_NEW";
-      return "NEW";
-    };
-
     const status = getStatus(order, filledQuantity);
 
     return {
@@ -64,4 +51,17 @@ export const orderResponse = (order, executions) => {
   } catch (error) {
     throw new Error("Error while generating complete order", { cause: error });
   }
+};
+
+//assign status
+export const getStatus = (order, filledQuantity) => {
+  if (order.rejectReason !== null) return "REJECTED";
+  else if (filledQuantity >= order.quantity) return "FILLED";
+  else if (order.cancelOutcome === "CANCELLED") return "CANCELLED";
+  else if (order.cancelRequestedAt !== null && order.cancelOutcome === null)
+    return "PENDING_CANCEL";
+  else if (filledQuantity > 0) return "PARTIALLY_FILLED";
+  if (order.acceptedByMarket === 1) return "WORKING";
+  if (order.marketOrderId !== null) return "PENDING_NEW";
+  return "NEW";
 };

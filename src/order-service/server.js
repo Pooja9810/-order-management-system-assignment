@@ -63,7 +63,7 @@ function openDb(file) {
   db.exec("PRAGMA busy_timeout = 5000;");
   db.exec(SCHEMA);
   //check if column status exists already
-  console.log("return value", statusExists(db));
+
   if (!statusExists(db)) {
     db.exec(addStatusColumn);
     console.log("Status column added to the database");
@@ -150,25 +150,45 @@ app.post("/orders", async (req, res) => {
   }
 });
 
-//get all orders
-app.get("/orders", (req, res) => {
-  try {
-    //calling getAllOrders from orderHelper.js fn
-    const orders = getAllOrders(db);
-    //Return the sql result
-    res.json(orders);
-  } catch (error) {
-    console.error("SQL error", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 //get orders/:orderId
 app.get("/orders/:orderId", (req, res) => {
   try {
     const order = getOrderById(db, req.params.orderId);
     if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
     res.json(order);
+  } catch (error) {
+    console.error("SQL error", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+//getAllOrders and  status = "WORKING"
+app.get("/orders", (req, res) => {
+  try {
+    const { status } = req.query;
+
+    const valid_status = [
+      "NEW",
+      "PENDING_NEW",
+      "WORKING",
+      "PARTIALLY_FILLED",
+      "FILLED",
+      "CANCELLED",
+      "REJECTED",
+      "PENDING_CANCEL",
+    ];
+
+    if (status && !valid_status.includes(status)) {
+      return res.status(400).json({ error: "INVALID_STATUS" });
+    }
+    //if status present in url
+    const orders = status
+      ? //filter through the orders and keep matching status
+        getAllOrders(db).filter((o) => o.status === status)
+      : //else get all orders
+        getAllOrders(db);
+
+    res.json({ orders });
   } catch (error) {
     console.error("SQL error", error);
     res.status(500).json({ error: "Internal server error" });

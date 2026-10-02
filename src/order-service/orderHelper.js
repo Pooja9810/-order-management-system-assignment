@@ -1,4 +1,4 @@
-import { orderResponse } from "./completeOrder.js";
+import { orderResponse, getStatus } from "./completeOrder.js";
 export const createOrder = (db, orderRequest, security) => {
   try {
     console.log(
@@ -58,8 +58,11 @@ export const getOrderByClientOrderId = (db, clientOrderId) => {
 };
 
 export const getAllOrders = (db) => {
-  let stmt = db.prepare("SELECT * FROM orders");
-  return stmt.all();
+  let orders = db.prepare("SELECT * FROM orders ORDER BY orderId ASC").all();
+  return orders.map((order) => {
+    const executions = getExecutionsByOrderId(db, order.orderId);
+    return orderResponse(order, executions);
+  });
 };
 
 //update marketOrderId in the orders table
@@ -145,4 +148,22 @@ export const statusExists = (db) => {
     )
     .get();
   return stmt.count > 0;
+};
+
+//Updating the status column after any change in executions table
+export const refreshStatus = (db, orderId) => {
+  const order = db
+    .prepare("SELECT * FROM orders WHERE orderId = ?")
+    .get(orderId);
+
+  const executions = getExecutionsByOrderId(db, orderId);
+  const filledQuantity = executions.reduce(
+    (sum, e) => sum + e.executedQuantity,
+    0,
+  );
+  const status = getStatus(order, filledQuantity);
+  db.prepare("UPDATE orders SET status = ? WHERE orderId = ?").run(
+    status,
+    orderId,
+  );
 };

@@ -9,6 +9,7 @@ import {
   getOrderByClientOrderId,
   updateMarketOrderId,
   updateCancelRequestedAt,
+  statusExists,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
@@ -18,6 +19,7 @@ import {
 } from "./validateOrder.js";
 import { createOrderInMarket, cancelMarketOrder } from "./marketHelper.js";
 import { startMarketConsumerService } from "./marketConsumer.js";
+import { OrderStatus } from "./constants.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -53,12 +55,20 @@ const SCHEMA = `
   )
   `;
 
+const addStatusColumn = `ALTER TABLE orders ADD COLUMN status TEXT DEFAULT "NEW"`;
+
 function openDb(file) {
   mkdirSync(dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA busy_timeout = 5000;");
   db.exec(SCHEMA);
+  //check if column status exists already
+
+  if (!statusExists(db)) {
+    db.exec(addStatusColumn);
+    console.log("Status column added to the database");
+  }
   return db;
 }
 //Calling openDb so that db gets created
@@ -82,7 +92,7 @@ const PORT = 4003;
 app.use(express.json());
 
 app.get("/health", (req, res) => {
-  res.json({
+  return res.json({
     status: "UP",
   });
 });
@@ -141,25 +151,34 @@ app.post("/orders", async (req, res) => {
   }
 });
 
-//get all orders
-app.get("/orders", (req, res) => {
+//get orders/:orderId
+app.get("/orders/:orderId", (req, res) => {
   try {
-    //calling getAllOrders from orderHelper.js fn
-    const orders = getAllOrders(db);
-    //Return the sql result
-    res.json(orders);
+    const order = getOrderById(db, req.params.orderId);
+    if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
+    return res.json(order);
   } catch (error) {
     console.error("SQL error", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-//get orders/:orderId
-app.get("/orders/:orderId", (req, res) => {
+//getAllOrders and  status = "WORKING"
+app.get("/orders", (req, res) => {
   try {
-    const order = getOrderById(db, req.params.orderId);
-    if (!order) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
-    res.json(order);
+    const { status } = req.query;
+
+    if (status && !OrderStatus.includes(status)) {
+      return res.status(400).json({ error: "INVALID_STATUS" });
+    }
+    //if status present in url
+    const orders = status
+      ? //filter through the orders and keep matching status
+        getAllOrders(db).filter((o) => o.status === status)
+      : //else get all orders
+        getAllOrders(db);
+
+    return res.json({ orders });
   } catch (error) {
     console.error("SQL error", error);
     res.status(500).json({ error: "Internal server error" });

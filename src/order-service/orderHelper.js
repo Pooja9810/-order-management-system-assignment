@@ -1,4 +1,4 @@
-import { orderResponse } from "./completeOrder.js";
+import { orderResponse, getStatus } from "./completeOrder.js";
 export const createOrder = (db, orderRequest, security) => {
   try {
     console.log(
@@ -58,8 +58,11 @@ export const getOrderByClientOrderId = (db, clientOrderId) => {
 };
 
 export const getAllOrders = (db) => {
-  let stmt = db.prepare("SELECT * FROM orders");
-  return stmt.all();
+  let orders = db.prepare("SELECT * FROM orders ORDER BY orderId ASC").all();
+  return orders.map((order) => {
+    const executions = getExecutionsByOrderId(db, order.orderId);
+    return orderResponse(order, executions);
+  });
 };
 
 //update marketOrderId in the orders table
@@ -88,7 +91,9 @@ export const updateAcceptedByMarket = (db, marketOrderId) => {
 
 //update the rejectReason of an order
 export const updateRejectReason = (db, orderId, reason) => {
-  let stmt = db.prepare("UPDATE orders SET rejectReason = ? where orderId =? ");
+  let stmt = db.prepare(
+    "UPDATE orders SET rejectReason = ? where orderId =? returning *",
+  );
   return stmt.run(reason, orderId);
 };
 
@@ -133,5 +138,31 @@ export const insertIntoExecutions = (db, orderId, exec) => {
     exec.lastQuantity,
     exec.lastPriceMinor,
     exec.occurredAt,
+  );
+};
+
+//check if status column exists
+
+export const statusExists = (db) => {
+  let stmt = db
+    .prepare(
+      "SELECT COUNT(*) as count FROM pragma_table_info('orders') WHERE name='status'",
+    )
+    .get();
+  return stmt.count > 0;
+};
+
+//Updating the status column after any change in executions table
+export const refreshStatus = (db, order) => {
+  const executions = getExecutionsByOrderId(db, order.orderId);
+  const filledQuantity = executions.reduce(
+    (sum, e) => sum + e.executedQuantity,
+    0,
+  );
+
+  const status = getStatus(order, filledQuantity);
+  db.prepare("UPDATE orders SET status = ? WHERE orderId = ?").run(
+    status,
+    order.orderId,
   );
 };

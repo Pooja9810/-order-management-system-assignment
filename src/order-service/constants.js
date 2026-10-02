@@ -1,4 +1,4 @@
-export const valid_status = {
+export const OrderStatus = {
   NEW: "NEW",
   PENDING_NEW: "PENDING_NEW",
   WORKING: "WORKING",

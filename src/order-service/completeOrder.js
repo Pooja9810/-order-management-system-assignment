@@ -1,4 +1,4 @@
-import { valid_status } from "./constants.js";
+import { OrderStatus } from "./constants.js";
 //complete order including executions as a response to GET/orders:orderId
 
 export const orderResponse = (order, executions) => {
@@ -57,13 +57,13 @@ export const orderResponse = (order, executions) => {
 
 //assign status
 export const getStatus = (order, filledQuantity) => {
-  if (order.rejectReason !== null) return valid_status.REJECTED;
-  else if (filledQuantity >= order.quantity) return valid_status.FILLED;
-  else if (order.cancelOutcome === "CANCELLED") return valid_status.CANCELLED;
+  if (order.rejectReason !== null) return OrderStatus.REJECTED;
+  else if (filledQuantity >= order.quantity) return OrderStatus.FILLED;
+  else if (order.cancelOutcome === "CANCELLED") return OrderStatus.CANCELLED;
   else if (order.cancelRequestedAt !== null && order.cancelOutcome === null)
-    return valid_status.PENDING_CANCEL;
-  else if (filledQuantity > 0) return valid_status.PARTIALLY_FILLED;
-  if (order.acceptedByMarket === 1) return valid_status.WORKING;
-  if (order.marketOrderId !== null) return valid_status.PENDING_NEW;
+    return OrderStatus.PENDING_CANCEL;
+  else if (filledQuantity > 0) return OrderStatus.PARTIALLY_FILLED;
+  if (order.acceptedByMarket === 1) return OrderStatus.WORKING;
+  if (order.marketOrderId !== null) return OrderStatus.PENDING_NEW;
   return "NEW";
 };

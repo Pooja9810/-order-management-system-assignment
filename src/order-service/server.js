@@ -19,7 +19,7 @@ import {
 } from "./validateOrder.js";
 import { createOrderInMarket, cancelMarketOrder } from "./marketHelper.js";
 import { startMarketConsumerService } from "./marketConsumer.js";
-import { valid_status } from "./constants.js";
+import { OrderStatus } from "./constants.js";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
@@ -168,7 +168,7 @@ app.get("/orders", (req, res) => {
   try {
     const { status } = req.query;
 
-    if (status && !valid_status.includes(status)) {
+    if (status && !OrderStatus.includes(status)) {
       return res.status(400).json({ error: "INVALID_STATUS" });
     }
     //if status present in url

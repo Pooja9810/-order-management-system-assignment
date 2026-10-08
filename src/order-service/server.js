@@ -115,7 +115,7 @@ app.post("/orders", async (req, res) => {
     //Check if clientOrderId is already in the db
 
     const existing = getOrderByClientOrderId(db, orderRequest.clientOrderId);
-    if (existing) return ok(res, existing);
+    if (existing) return ok(res, getOrderById(db, existing.orderId));
 
     //calling fetchSecurity
 
@@ -142,8 +142,10 @@ app.post("/orders", async (req, res) => {
 
     //update marketOrderId in  the orders db
     updateMarketOrderId(db, orderResult.orderId, marketResponse.marketOrderId);
-
-    return created(res, orderResult);
+    //fetch the order with updated fields
+    const updatedOrder = getOrderById(db, orderResult.orderId);
+    //return with all calculated fields
+    return created(res, updatedOrder);
   } catch (err) {
     console.error(err);
 

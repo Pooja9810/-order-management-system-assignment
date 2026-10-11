@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { validateLedgerRequest } from "./validateLedgerRequest.js";
+import { createOrder } from "./ledgerHelper.js";
 
 const app = express();
 const PORT = 4004;
@@ -69,12 +70,17 @@ app.post("/post-orders", async (req, res) => {
   console.log("Post orders", postOrderReq);
 
   //validate ledger request
-  const validateError = validateLedgerRequest(postOrderReq);
+  const validateError = validateLedgerRequest(postOrderReq, db);
   if (validateError) {
     return res
       .status(validateError.status)
       .json({ error: validateError.error });
   }
+
+  //insert into post_orders table
+  const add_order = createOrder(db, postOrderReq);
+  //Send the order as a response
+  console.log("Order present in the orders table:", add_order);
 });
 
 // Start the server

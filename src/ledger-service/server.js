@@ -3,7 +3,10 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { validateLedgerRequest } from "./validateLedgerRequest.js";
-import { createOrder } from "./ledgerHelper.js";
+import {
+  insertIntoPostOrders,
+  insertIntoPostExecutions,
+} from "./ledgerHelper.js";
 
 const app = express();
 const PORT = 4004;
@@ -24,7 +27,6 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS post_orders(
     orderId INTEGER PRIMARY KEY,
     securityId TEXT NOT NULL,
-    postedAt TEXT NOT NULL,
     symbol TEXT NOT NULL,
     venue TEXT NOT NULL,
     currency TEXT NOT NULL,
@@ -78,9 +80,14 @@ app.post("/post-orders", async (req, res) => {
   }
 
   //insert into post_orders table
-  const add_order = createOrder(db, postOrderReq);
+  const orderResult = insertIntoPostOrders(db, postOrderReq);
+
+  //insert into post_executions table
+  const execResult = insertIntoPostExecutions(db, postOrderReq);
+
   //Send the order as a response
-  console.log("Order present in the orders table:", add_order);
+  console.log("Order present in the post_orders table:", orderResult);
+  console.log("Execution present in the post_executions table:", execResult);
 });
 
 // Start the server

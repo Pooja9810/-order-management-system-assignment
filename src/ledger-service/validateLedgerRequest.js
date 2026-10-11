@@ -27,7 +27,7 @@ export const validateOrderId = (orderRequest) => {
 export const validateExecutions = (orderRequest) => {
   console.log("Checking the execution:", orderRequest.executions);
   const reqExecutions = orderRequest.executions;
-  console.log("LENGTH", reqExecutions.length);
+
   //`executions` is missing, not an array, or empty
   if (
     !reqExecutions ||
@@ -85,6 +85,9 @@ export const validateOrderIdInLedger = (orderRequest, db) => {
     .get(orderRequest.orderId);
 
   if (existing) {
+    console.log(
+      `Order ${orderRequest.orderId} is already present in the ledger`,
+    );
     return false;
   } else return true;
 };

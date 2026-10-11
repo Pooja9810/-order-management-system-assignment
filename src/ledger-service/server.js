@@ -6,6 +6,7 @@ import { validateLedgerRequest } from "./validateLedgerRequest.js";
 import {
   insertIntoPostOrders,
   insertIntoPostExecutions,
+  getAllOrders,
 } from "./ledgerHelper.js";
 
 const app = express();
@@ -27,6 +28,7 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS post_orders(
     orderId INTEGER PRIMARY KEY,
     securityId TEXT NOT NULL,
+    postedAt TEXT NOT NULL,
     symbol TEXT NOT NULL,
     venue TEXT NOT NULL,
     currency TEXT NOT NULL,
@@ -67,7 +69,7 @@ console.log(absoluteDbPath);
 const db = openDb(absoluteDbPath);
 
 //POST /post-order
-app.post("/post-orders", async (req, res) => {
+app.post("/post-order", async (req, res) => {
   const postOrderReq = req.body;
   console.log("Post orders", postOrderReq);
 
@@ -88,6 +90,25 @@ app.post("/post-orders", async (req, res) => {
   //Send the order as a response
   console.log("Order present in the post_orders table:", orderResult);
   console.log("Execution present in the post_executions table:", execResult);
+
+  return res.status(201).json({
+    orderId: postOrderReq.orderId,
+    postedAt: orderResult.postedAt,
+    tradeCount: postOrderReq.executions.length,
+  });
+});
+
+//GET post_orders
+
+app.get("/posted-orders", (req, res) => {
+  try {
+    const allOrders = getAllOrders(db);
+    console.log(allOrders);
+    res.json({ postedOrders: allOrders });
+  } catch (error) {
+    console.error("Error handling GET /post-orders:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Start the server

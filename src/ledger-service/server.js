@@ -2,6 +2,7 @@ import express from "express";
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { validateLedgerRequest } from "./validateLedgerRequest.js";
 
 const app = express();
 const PORT = 4004;
@@ -33,7 +34,7 @@ CREATE TABLE IF NOT EXISTS post_orders(
 );
  CREATE TABLE IF NOT EXISTS post_executions (
     execId TEXT NOT NULL PRIMARY KEY,
-    orderId INTEGER NOT NULL REFERENCES post_orders(orderId)
+    orderId INTEGER NOT NULL REFERENCES post_orders(orderId),
     executedQuantity INTEGER NOT NULL,
     priceMinor INTEGER NOT NULL,
     occurredAt TEXT NOT NULL
@@ -61,6 +62,20 @@ const absoluteDbPath = join(
 );
 console.log(absoluteDbPath);
 const db = openDb(absoluteDbPath);
+
+//POST /post-order
+app.post("/post-orders", async (req, res) => {
+  const postOrderReq = req.body;
+  console.log("Post orders", postOrderReq);
+
+  //validate ledger request
+  const validateError = validateLedgerRequest(postOrderReq);
+  if (validateError) {
+    return res
+      .status(validateError.status)
+      .json({ error: validateError.error });
+  }
+});
 
 // Start the server
 app.listen(PORT, () => {

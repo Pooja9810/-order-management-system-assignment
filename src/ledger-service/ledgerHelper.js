@@ -1,3 +1,4 @@
+//insert into post_orders
 export const insertIntoPostOrders = (db, orderRequest) => {
   try {
     console.log(`Creating a ledger entry for orderId: ${orderRequest.orderId}`);
@@ -24,7 +25,7 @@ export const insertIntoPostOrders = (db, orderRequest) => {
     console.error("Error while inserting into post_orders", error);
   }
 };
-
+//insert into post_executions acc to orderId
 export const insertIntoPostExecutions = (db, orderRequest) => {
   try {
     console.log(

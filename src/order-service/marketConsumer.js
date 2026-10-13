@@ -1,4 +1,5 @@
 import { consume } from "../../scaffold/queue/index.js";
+import { checkAndPostToLedger } from "./orderHelper.js";
 import process from "node:process";
 import {
   updateAcceptedByMarket,
@@ -18,7 +19,7 @@ export const startMarketConsumerService = (db) => {
     name: "market-updates",
     visibilityTimeoutMs: 3000,
     async handler({ messageId, body, deliveryCount }) {
-      console.log("Queue message received:", body);
+      console.log("\n Queue message received:", body);
       console.log("messageId:", messageId);
       console.log("Delivery count", deliveryCount);
 
@@ -46,13 +47,13 @@ export const startMarketConsumerService = (db) => {
       }
     },
   });
-
   consumer.start();
 };
 //If the message received has type accepted
 const handleAccepted = (db, body, order) => {
   updateAcceptedByMarket(db, body.marketOrderId);
   refreshStatus(db, order);
+  checkAndPostToLedger(db, order.orderId);
 };
 
 //If the message received has type FILL
@@ -60,6 +61,7 @@ const handleAccepted = (db, body, order) => {
 const handleFill = (db, body, order) => {
   const fillType = insertIntoExecutions(db, order.orderId, body);
   refreshStatus(db, order);
+  checkAndPostToLedger(db, order.orderId);
 
   if (!fillType) {
     throw new Error(`Error while insert into execution : ${order.orderId}`);
@@ -75,16 +77,19 @@ const handleReject = (db, body, order) => {
   );
   //pass the order with the reject reason in the db
   refreshStatus(db, dbOrderWithRejectReason);
+  checkAndPostToLedger(db, order.orderId);
 };
 
 //If msg received has type CANCELLED
 const handleCancel = (db, body, order) => {
   updateCancelOutcomeToCancelled(db, body.marketOrderId);
   refreshStatus(db, order);
+  checkAndPostToLedger(db, order.orderId);
 };
 
 //If msg received has type CANCEL_REJECTED
 const handleCancelRejected = (db, body, order) => {
   updateCancelOutcomeToCancelRejected(db, body.marketOrderId, body.reason);
   refreshStatus(db, order);
+  checkAndPostToLedger(db, order.orderId);
 };

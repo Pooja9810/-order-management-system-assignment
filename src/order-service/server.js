@@ -10,6 +10,7 @@ import {
   updateMarketOrderId,
   updateCancelRequestedAt,
   statusExists,
+  checkAndPostToLedger,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
@@ -219,6 +220,19 @@ app.delete("/orders/:orderId", async (req, res) => {
 
 //call marketconsumer to utilize message queue
 startMarketConsumerService(db);
+
+//check for unposted order from the orders db on startup
+const unpostedOrders = getAllOrders(db).filter(
+  (order) =>
+    ["FILLED", "CANCELLED", "REJECTED"].includes(order.status) &&
+    order.executions.length > 0 &&
+    order.postedToLedger === false,
+);
+
+for (const order of unpostedOrders) {
+  console.log(`On startup posting unposted order ${order.orderId}`);
+  await checkAndPostToLedger(db, order.orderId);
+}
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

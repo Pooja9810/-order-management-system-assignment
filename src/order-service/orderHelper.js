@@ -1,4 +1,5 @@
 import { orderResponse, getStatus } from "./completeOrder.js";
+import { postOrderToLedger } from "./postOrderToLedger.js";
 export const createOrder = (db, orderRequest, security) => {
   try {
     console.log(
@@ -165,4 +166,35 @@ export const refreshStatus = (db, order) => {
     status,
     order.orderId,
   );
+};
+
+//marked as posted in ledger
+
+export const markOrderAsPosted = (db, orderId) => {
+  db.prepare("UPDATE orders SET postedToLedger = 1 WHERE orderId = ?").run(
+    orderId,
+  );
+};
+//check and post to ledger
+
+export const checkAndPostToLedger = async (db, orderId) => {
+  const order = getOrderById(db, orderId);
+  const isFinished = ["FILLED", "CANCELLED", "REJECTED"].includes(order.status);
+  const hasExecutions = order.executions.length > 0;
+  const notYetPosted = order.postedToLedger === false;
+  console.log(
+    `Current order ${order.orderId} has order status ${order.status}-${isFinished}, includes executions-${hasExecutions} and notYetPosted -${notYetPosted}`,
+  );
+  //console.log(order.executions);
+
+  if (isFinished && hasExecutions && notYetPosted) {
+    // call postOrderToLedger
+    console.log(`\n Calling postOrderToLedger`);
+    const ledger = await postOrderToLedger(order, order.executions);
+    // mark as posted
+    if (ledger.orderId || ledger.status === 409) {
+      markOrderAsPosted(db, order.orderId);
+      console.log(`\nOrder ${order.orderId} has been posted to the ledger`);
+    }
+  }
 };

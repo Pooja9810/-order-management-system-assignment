@@ -170,11 +170,12 @@ app.get("/orders/:orderId", (req, res) => {
 app.get("/orders", (req, res) => {
   try {
     const { status } = req.query;
-
-    if (status && !OrderStatus.includes(status)) {
+    console.log("URL STATUS:", status);
+    if (status && !Object.values(OrderStatus).includes(status)) {
       return res.status(400).json({ error: "INVALID_STATUS" });
     }
     //if status present in url
+
     const orders = status
       ? //filter through the orders and keep matching status
         getAllOrders(db).filter((o) => o.status === status)

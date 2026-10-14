@@ -29,6 +29,7 @@ export const validateOrderRequest = (orderRequest) => {
   if (!validateVenue(orderRequest)) {
     return { status: 400, error: "UNEXPECTED_VENUE" };
   }
+  return null;
 };
 //1. Validating the clientOrderId
 export const validateClientOrderId = (orderRequest) => {
@@ -36,7 +37,7 @@ export const validateClientOrderId = (orderRequest) => {
   const clientId = orderRequest.clientOrderId;
 
   //missing clientId
-  if (!clientId || typeof clientId !== "string") {
+  if (!clientId || typeof clientId !== "string" || clientId.trim() === "") {
     return false;
   }
   //clientId already present in db

@@ -11,6 +11,7 @@
     "start:market": "node scaffold/market-service/server.js",
     "start:order": "node src/order-service/server.js",
     "start:ledger": "node src/ledger-service/server.js",
+    "dev": "concurrently \"npm run start:security\" \"npm run start:market\" \"npm run start:order\" \"npm run start:ledger\"",
     "place": "node src/driver/place-orders.js",
     "report": "node src/ledger-service/report-cli.js",
     "test": "node --test \"test/*.test.js\""
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.6",
     "eslint": "^10.10.0",
     "globals": "^17.12.0"
   }

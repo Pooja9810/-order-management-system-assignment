@@ -74,6 +74,13 @@ export async function fetchSecurity(body) {
         };
       }
     }
+    //If a venue was requested but the found security does not trade there then refuse it.
+    if (body.venue && security.venue !== body.venue) {
+      console.log(
+        `${body.symbol} trades on ${security.venue} not requested ${body.venue}`,
+      );
+      throw { status: 404, error: `SYMBOL_NOT_AT_VENUE` };
+    }
   }
 
   console.log("Final security:", security);

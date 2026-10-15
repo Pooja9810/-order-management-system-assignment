@@ -15,7 +15,15 @@ const PORT = 4004;
 //This helps express read json from request bodies
 
 app.use(express.json());
+app.use((err, req, res, next) => {
+  // If the crash came from the express.json() parser
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    return res.status(400).json({ error: "MALFORMED_JSON" });
+  }
 
+  // Pass any other system errors down the chain
+  next(err);
+});
 //health route
 
 app.get("/health", (req, res) => {

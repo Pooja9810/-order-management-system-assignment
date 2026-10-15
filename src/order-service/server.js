@@ -213,7 +213,7 @@ app.delete("/orders/:orderId", async (req, res) => {
     order.status === "REJECTED"
   )
     return res.status(409).json({ error: "ORDER_NOT_ACTIVE" });
-  if (order.cancelRequestedAt !== null && order.cancelOutcome === null) {
+  if (order.cancelRequested && order.cancelOutcome === null) {
     return res.status(409).json({ error: "CANCEL_ALREADY_REQUESTED" });
   }
   if (order.marketOrderId === null) {

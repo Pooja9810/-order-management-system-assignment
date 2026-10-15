@@ -115,14 +115,14 @@ export const updateCancelOutcomeToCancelled = (db, marketOrderId) => {
   return stmt.run(marketOrderId);
 };
 
-//update cancelOutcome to 'CANCEL_REJECTED
+//update cancelOutcome to 'REJECTED
 export const updateCancelOutcomeToCancelRejected = (
   db,
   marketOrderId,
   reason,
 ) => {
   let stmt = db.prepare(
-    "UPDATE orders SET cancelOutcome = 'CANCEL_REJECTED',cancelRejectReason =? where marketOrderId = ?",
+    "UPDATE orders SET cancelOutcome = 'REJECTED',cancelRejectReason =? where marketOrderId = ?",
   );
   return stmt.run(reason, marketOrderId);
 };

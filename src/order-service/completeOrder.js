@@ -39,16 +39,37 @@ export const orderResponse = (order, executions) => {
     const status = getStatus(order, filledQuantity);
 
     return {
-      ...order,
-      acceptedByMarket: order.acceptedByMarket === 1,
-      cancelRequested: order.cancelRequestedAt !== null,
-      postedToLedger: order.postedToLedger === 1,
+      orderId: order.orderId,
+      clientOrderId: order.clientOrderId,
+      marketOrderId: order.marketOrderId,
+      securityId: order.securityId,
+      symbol: order.symbol,
+      venue: order.venue,
+      currency: order.currency,
+      assetType: order.assetType,
+      contractMultiplier: order.contractMultiplier,
+      side: order.side,
+      quantity: order.quantity,
+      orderType: order.orderType,
+      limitPriceMinor: order.limitPriceMinor,
       status,
       filledQuantity,
       leavesQuantity,
       averagePriceMinor,
       grossNotionalMinor,
-      executions,
+      rejectReason: order.rejectReason,
+      cancelRequested: order.cancelRequestedAt !== null,
+      cancelOutcome: order.cancelOutcome,
+      cancelRejectReason: order.cancelRejectReason,
+      postedToLedger: order.postedToLedger === 1,
+      createdAt: order.createdAt,
+      executions: executions.map((e) => ({
+        execId: e.execId,
+        sequence: e.sequence,
+        executedQuantity: e.executedQuantity,
+        priceMinor: e.priceMinor,
+        occurredAt: e.occurredAt,
+      })),
     };
   } catch (error) {
     throw new Error("Error while generating complete order", { cause: error });

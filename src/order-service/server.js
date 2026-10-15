@@ -10,6 +10,7 @@ import {
   updateMarketOrderId,
   updateCancelRequestedAt,
   statusExists,
+  checkAndPostToLedger,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
@@ -91,6 +92,16 @@ const PORT = 4003;
 
 app.use(express.json());
 
+app.use((err, req, res, next) => {
+  // If the crash came from the express.json() parser
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    return res.status(400).json({ error: "MALFORMED_JSON" });
+  }
+
+  // Pass any other system errors down the chain
+  next(err);
+});
+
 app.get("/health", (req, res) => {
   return res.json({
     status: "UP",
@@ -169,11 +180,12 @@ app.get("/orders/:orderId", (req, res) => {
 app.get("/orders", (req, res) => {
   try {
     const { status } = req.query;
-
-    if (status && !OrderStatus.includes(status)) {
+    console.log("URL STATUS:", status);
+    if (status && !Object.values(OrderStatus).includes(status)) {
       return res.status(400).json({ error: "INVALID_STATUS" });
     }
     //if status present in url
+
     const orders = status
       ? //filter through the orders and keep matching status
         getAllOrders(db).filter((o) => o.status === status)
@@ -189,6 +201,8 @@ app.get("/orders", (req, res) => {
 
 //cancel an order - when order is  filled, cancelled or rejected
 app.delete("/orders/:orderId", async (req, res) => {
+  console.log("@@@@@@@@@@@@@", req.params);
+
   const order = getOrderById(db, req.params.orderId);
 
   //check four refusals
@@ -220,6 +234,22 @@ app.delete("/orders/:orderId", async (req, res) => {
 //call marketconsumer to utilize message queue
 startMarketConsumerService(db);
 
+//check for unposted order from the orders db on startup
+const unpostedOrders = getAllOrders(db).filter(
+  (order) =>
+    ["FILLED", "CANCELLED", "REJECTED"].includes(order.status) &&
+    order.executions.length > 0 &&
+    order.postedToLedger === false,
+);
+
+for (const order of unpostedOrders) {
+  console.log(`On startup posting unposted order ${order.orderId}`);
+  await checkAndPostToLedger(db, order.orderId);
+}
+//Catch invalid routes
+app.use((req, res) => {
+  return res.status(404).json({ error: "NOT_FOUND" });
+});
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

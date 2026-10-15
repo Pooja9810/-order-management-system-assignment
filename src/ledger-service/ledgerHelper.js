@@ -65,7 +65,7 @@ export const getAllOrders = (db) => {
 
     //Loop through each order
     return orders.map((order) => {
-      const executions = db
+      const trades = db
         .prepare(
           "SELECT execId, executedQuantity, priceMinor, occurredAt FROM post_executions WHERE orderId = ?",
         )
@@ -74,7 +74,7 @@ export const getAllOrders = (db) => {
       // Return the order object with its executions
       return {
         ...order,
-        executions: executions,
+        trades,
       };
     });
   } catch (error) {

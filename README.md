@@ -78,6 +78,26 @@ Until you have written something they will tell you exactly which of the three f
 
 Start with the warmup fixture. `data/scenarios/main.json` has cancels, duplicate messages and a restart in the middle, and is not a good place to begin.
 
+### When a test fails and you cannot see why
+
+The tests start your services as separate processes, so their output does not appear on your terminal by default. Two things help.
+
+When something fails, the last 40 lines each service printed are included in the failure, so your own `console.log` calls are there — look below the error message.
+
+To watch them live instead:
+
+```bash
+OMS_LOGS=1 npm test
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:OMS_LOGS=1; npm test
+```
+
+If a test says the system did not settle, read the list of orders it prints. It tells you which ones never finished, what state each was in, and whether the exchange still had anything left to send — if it had nothing left and the queue was empty, nothing more was coming and those orders stopped where they are.
+
 ## Starting fresh
 
 Everything your program writes lives in `out/`. Delete it and the next run starts from nothing:

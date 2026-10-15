@@ -130,7 +130,9 @@ export const updateCancelOutcomeToCancelRejected = (
 
 export const insertIntoExecutions = (db, orderId, exec) => {
   let stmt = db.prepare(
-    `INSERT INTO executions(execId, orderId,sequence, executedQuantity, priceMinor, occurredAt) values(?,?,?,?,?,?)`,
+    `INSERT INTO executions (execId, orderId,sequence, executedQuantity, priceMinor, occurredAt)
+     values(?,?,?,?,?,?)
+     ON CONFLICT DO NOTHING`,
   );
   return stmt.run(
     exec.execId,

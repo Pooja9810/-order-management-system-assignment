@@ -12,6 +12,8 @@ export const postOrderToLedger = async (order, executions) => {
       contractMultiplier: order.contractMultiplier,
       side: order.side,
       finalStatus: order.status,
+      // postedAt: new Date().toISOString(),
+      // trades: executions,
       executions: executions,
     }),
   });

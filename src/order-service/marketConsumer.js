@@ -14,14 +14,19 @@ import {
 //Using the message queue
 
 export const startMarketConsumerService = (db) => {
+  console.log("STARTING MARKET CONSUMER");
   const consumer = consume({
     file: process.env.QUEUE_FILE ?? "out/queue.sqlite",
     name: "market-updates",
     visibilityTimeoutMs: 3000,
     async handler({ messageId, body, deliveryCount }) {
-      console.log("\n Queue message received:", body);
-      console.log("messageId:", messageId);
-      console.log("Delivery count", deliveryCount);
+      // console.log("\n Queue message received:", body);
+      // console.log("messageId:", messageId);
+      // console.log("Delivery count", deliveryCount);
+
+      console.log(
+        `[${deliveryCount}] messageId: ${messageId} marketOrderId: ${body.marketOrderId} type: ${body.type} execId: ${body.execId}`,
+      );
 
       const order = getOrderByMarketOrderId(db, body.marketOrderId);
 

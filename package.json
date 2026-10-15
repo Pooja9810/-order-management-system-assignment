@@ -14,7 +14,8 @@
     "dev": "concurrently \"npm run start:security\" \"npm run start:market\" \"npm run start:order\" \"npm run start:ledger\"",
     "place": "node src/driver/place-orders.js",
     "report": "node src/ledger-service/report-cli.js",
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test \"test/*.test.js\"",
+    "test:debug": "node --test --inspect-brk \"test/*.test.js\""
   },
   "dependencies": {
     "express": "^5.1.0"

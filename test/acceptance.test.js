@@ -78,6 +78,9 @@ async function runFixture(fixture) {
     const orders = await settle({ expectedOrders: placedOrderCount(scenario) });
     return { scenario, system, orders };
   } catch (err) {
+    // Whatever went wrong, the services almost certainly said something about
+    // it. Attach that before shutting them down, or it is lost.
+    err.message = `${err.message}\n\n${system.logs()}`;
     await system.stop();
     throw err;
   }

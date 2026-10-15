@@ -71,39 +71,92 @@ export async function waitForHealth(url, timeoutMs = 15000) {
   throw new Error(`${url} did not come up within ${timeoutMs}ms (${lastError})`);
 }
 
+/**
+ * Set OMS_LOGS=1 to see what the services are printing while the tests run.
+ * Without it their output is still captured, and shown if anything fails.
+ */
+const STREAM_LOGS = process.env.OMS_LOGS === '1';
+
+/** Keep the last N chunks, so a chatty service cannot exhaust memory. */
+const MAX_CAPTURED = 500;
+
+function capture(label, child) {
+  const lines = [];
+  const take = (chunk) => {
+    const text = String(chunk);
+    lines.push(text);
+    if (lines.length > MAX_CAPTURED) lines.shift();
+    if (STREAM_LOGS) {
+      for (const line of text.split('\n')) {
+        if (line.trim() !== '') console.log(`[${label}] ${line}`);
+      }
+    }
+  };
+  child.stdout.on('data', take);
+  child.stderr.on('data', take);
+  child.on('error', (err) => take(`spawn error: ${err.message}`));
+  return lines;
+}
+
 export function startProcess(label, scriptPath, env = {}) {
   const child = spawn(process.execPath, [scriptPath], {
     cwd: ROOT,
     env: { ...process.env, ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  const lines = [];
-  child.stdout.on('data', (d) => lines.push(String(d)));
-  child.stderr.on('data', (d) => lines.push(String(d)));
-  child.on('error', (err) => lines.push(`spawn error: ${err.message}`));
+  const lines = capture(label, child);
   return { label, child, lines, output: () => lines.join('') };
 }
 
+/** Stop a service, and make sure it is actually gone. */
 export async function stopProcess(handle, signal = 'SIGTERM') {
   if (!handle || handle.child.exitCode !== null || handle.child.killed) return;
   const ended = new Promise((r) => handle.child.once('exit', r));
   handle.child.kill(signal);
-  await Promise.race([ended, sleep(3000)]);
+  const landed = await Promise.race([ended.then(() => true), sleep(3000).then(() => false)]);
+  if (!landed && handle.child.exitCode === null) {
+    // Still there. A process left running keeps the test runner alive after
+    // the tests themselves have finished, which looks like a hang.
+    handle.child.kill('SIGKILL');
+    await Promise.race([ended, sleep(2000)]);
+  }
 }
 
-/** Run the scenario driver to completion. */
+/**
+ * Run the scenario driver to completion.
+ *
+ * It gets a deadline. A driver that never exits used to hang the whole run
+ * with nothing to show for it; now it is killed and its output reported.
+ */
 export function runDriver(scenarioPath, env = {}) {
+  const timeoutMs = Number(process.env.OMS_DRIVER_TIMEOUT_MS ?? 60000);
   return new Promise((resolvePromise, reject) => {
     const child = spawn(process.execPath, [ENTRY_POINTS.driver, scenarioPath], {
       cwd: ROOT,
       env: { ...process.env, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    const lines = [];
-    child.stdout.on('data', (d) => lines.push(String(d)));
-    child.stderr.on('data', (d) => lines.push(String(d)));
-    child.on('error', reject);
-    child.on('exit', (code) => resolvePromise({ code, output: lines.join('') }));
+    const lines = capture('driver', child);
+
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(
+        new Error(
+          `your driver was still running after ${timeoutMs}ms and was killed.\n` +
+            `It has to place the actions and then exit.\n` +
+            `--- driver output so far ---\n${lines.join('')}`
+        )
+      );
+    }, timeoutMs);
+
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      resolvePromise({ code, output: lines.join('') });
+    });
   });
 }
 
@@ -135,6 +188,57 @@ const TERMINAL = new Set(['FILLED', 'REJECTED', 'CANCELLED']);
  * Wait until every order has reached a state it can no longer leave, and the
  * ledger has been told about all the ones that traded.
  */
+/**
+ * Say what the system was still waiting for, in enough detail to act on.
+ *
+ * "4 still working" tells you nothing you can use. Which four, what state they
+ * were in, and — crucially — whether the exchange still had anything left to
+ * send, does: if the exchange is quiet and the queue is empty, nothing further
+ * is coming and the orders are stuck where they are.
+ */
+function describeStall(last, expectedOrders, timeoutMs) {
+  const head = `the system did not settle within ${timeoutMs}ms.`;
+  if (!last) return `${head}\n  order-service never answered at all.`;
+
+  const parts = [head];
+  const { orders, unfinished, unposted, venue } = last;
+
+  if (orders.length < expectedOrders) {
+    parts.push(`  Only ${orders.length} of the ${expectedOrders} expected orders exist.`);
+  }
+
+  if (unfinished.length > 0) {
+    parts.push(`  ${unfinished.length} order(s) never reached FILLED, REJECTED or CANCELLED:`);
+    for (const o of unfinished) {
+      parts.push(
+        `    order ${String(o.orderId).padStart(3)}  status=${String(o.status).padEnd(16)}` +
+          ` filled=${String(o.filledQuantity).padStart(4)}/${String(o.quantity).padEnd(4)}` +
+          ` cancelRequested=${String(o.cancelRequested).padEnd(5)}` +
+          ` cancelOutcome=${o.cancelOutcome}`
+      );
+    }
+  }
+
+  if (unposted.length > 0) {
+    parts.push(`  ${unposted.length} finished order(s) that traded never reached the ledger:`);
+    for (const o of unposted) {
+      parts.push(`    order ${o.orderId}  status=${o.status}  filled=${o.filledQuantity}`);
+    }
+  }
+
+  parts.push(
+    `  The exchange ${venue?.quiet ? 'had nothing left to send' : 'still had work scheduled'}` +
+      ` (quiet=${venue?.quiet}), and the queue held ${venue?.queueDepth} message(s).`
+  );
+  if (venue?.quiet === true && venue?.queueDepth === 0) {
+    parts.push(
+      '  Nothing further was going to arrive, so whatever is listed above is where it stopped,'
+    );
+    parts.push('  not something still in flight. Re-run with OMS_LOGS=1 to watch the services.');
+  }
+  return parts.join('\n');
+}
+
 export async function settle({ expectedOrders, timeoutMs = 45000 }) {
   const deadline = Date.now() + timeoutMs;
   let last = null;
@@ -150,12 +254,7 @@ export async function settle({ expectedOrders, timeoutMs = 45000 }) {
       const unposted = orders.filter(
         (o) => TERMINAL.has(o.status) && o.filledQuantity > 0 && !o.postedToLedger
       );
-      last = {
-        count: orders.length,
-        unfinished: unfinished.length,
-        unposted: unposted.length,
-        venue: venue.body,
-      };
+      last = { orders, unfinished, unposted, venue: venue.body };
 
       if (
         orders.length >= expectedOrders &&
@@ -171,11 +270,7 @@ export async function settle({ expectedOrders, timeoutMs = 45000 }) {
     }
     await sleep(150);
   }
-  const detail = last
-    ? `${last.count} orders, ${last.unfinished} still working, ${last.unposted} not yet in the ledger, ` +
-      `venue quiet=${last.venue?.quiet} queueDepth=${last.venue?.queueDepth}`
-    : 'order-service never answered';
-  throw new Error(`the system did not settle within ${timeoutMs}ms (${detail})`);
+  throw new Error(describeStall(last, expectedOrders, timeoutMs));
 }
 
 /** Wall-clock values differ every run, so they are blanked before comparing. */
@@ -241,9 +336,35 @@ export async function startSystem(scenario) {
 
   const handles = { security, market, ledger, order };
 
+  /**
+   * The tail of what each service printed, for when something goes wrong.
+   *
+   * Runs of the same line are collapsed. A service that prints one thing in a
+   * loop would otherwise fill the whole window and push out the lines that
+   * actually tell you something.
+   */
+  const logs = (linesEach = 40) =>
+    ['order', 'ledger', 'market', 'security']
+      .map((key) => {
+        const collapsed = [];
+        for (const line of handles[key].output().split('\n')) {
+          if (line.trim() === '') continue;
+          const previous = collapsed[collapsed.length - 1];
+          if (previous && previous.line === line) previous.count += 1;
+          else collapsed.push({ line, count: 1 });
+        }
+        const text = collapsed
+          .slice(-linesEach)
+          .map((e) => (e.count > 1 ? `${e.line}   (x${e.count})` : e.line))
+          .join('\n');
+        return `--- ${key}-service (last ${linesEach} lines) ---\n${text || '(printed nothing)'}`;
+      })
+      .join('\n\n');
+
   return {
     env,
     handles,
+    logs,
     async restartOrderService(signal = 'SIGKILL') {
       await stopProcess(handles.order, signal);
       handles.order = startProcess('order', ENTRY_POINTS.order, env);

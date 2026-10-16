@@ -111,10 +111,9 @@ app.post("/post-order", async (req, res) => {
 // //POST/ generate report
 app.post("/generate-report", async (req, res) => {
   const report = generateReport(db);
-  console.log("Report", report);
-
-  return res.status(201).json();
+  return res.status(201).json(report);
 });
+
 //GET post_orders
 
 app.get("/posted-orders", (req, res) => {

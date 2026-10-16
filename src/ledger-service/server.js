@@ -8,6 +8,7 @@ import {
   insertIntoPostExecutions,
   getAllOrders,
 } from "./ledgerHelper.js";
+import { generateReport } from "./report.js";
 
 const app = express();
 const PORT = 4004;
@@ -74,6 +75,7 @@ const absoluteDbPath = join(
   "ledger-service.sqlite",
 );
 console.log(absoluteDbPath);
+
 const db = openDb(absoluteDbPath);
 
 //POST /post-order
@@ -106,6 +108,13 @@ app.post("/post-order", async (req, res) => {
   });
 });
 
+// //POST/ generate report
+app.post("/generate-report", async (req, res) => {
+  const report = generateReport(db);
+  console.log("Report", report);
+
+  return res.status(201).json();
+});
 //GET post_orders
 
 app.get("/posted-orders", (req, res) => {

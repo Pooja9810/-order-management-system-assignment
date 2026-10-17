@@ -71,7 +71,7 @@ export function generateReport(db) {
     "gross_notional_minor",
   ];
 
-  // Get and increment report counter
+  //Get and increment report counter
   let counter = db
     .prepare("SELECT count FROM report_counter WHERE id = 1")
     .get();

@@ -201,8 +201,6 @@ app.get("/orders", (req, res) => {
 
 //cancel an order - when order is  filled, cancelled or rejected
 app.delete("/orders/:orderId", async (req, res) => {
-  console.log("@@@@@@@@@@@@@", req.params);
-
   const order = getOrderById(db, req.params.orderId);
 
   //check four refusals

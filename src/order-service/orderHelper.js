@@ -1,6 +1,6 @@
 import { orderResponse, getStatus } from "./completeOrder.js";
 import { postOrderToLedger } from "./postOrderToLedger.js";
-export const createOrder = (db, orderRequest, security) => {
+export const createOrder = (db, orderRequest, security, accountId) => {
   try {
     console.log(
       `About to create an order for clientOrderId: ${orderRequest.clientOrderId}`,
@@ -8,8 +8,8 @@ export const createOrder = (db, orderRequest, security) => {
 
     const stmt =
       db.prepare(`INSERT INTO orders (clientOrderId,securityId,symbol,venue,currency,assetType,
-      contractMultiplier,side,quantity,orderType,limitPriceMinor,createdAt)
-    values (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`);
+           contractMultiplier,side,quantity,orderType,limitPriceMinor,createdAt,accountId)
+    values (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`);
 
     const orderResult = stmt.get(
       orderRequest.clientOrderId,
@@ -24,6 +24,7 @@ export const createOrder = (db, orderRequest, security) => {
       orderRequest.orderType,
       orderRequest.limitPriceMinor ?? null,
       new Date().toISOString(),
+      accountId,
     );
 
     //Return the current order
@@ -142,6 +143,77 @@ export const insertIntoExecutions = (db, orderId, exec) => {
     exec.lastPriceMinor,
     exec.occurredAt,
   );
+};
+
+//update cash and shares for one new fill
+//the cash (BUY) or shares (SELL) were already taken when the order was placed
+export const applyFillToBalances = (db, order, exec) => {
+  const quantity = exec.lastQuantity;
+  const multiplier = order.contractMultiplier;
+  const fillValueMinor = quantity * exec.lastPriceMinor * multiplier;
+  //a fill can arrive after a cancel has already given the reservation back
+  const released = order.reservationReleased === 1;
+
+  if (order.side === "BUY") {
+    const reservedMinor = quantity * order.limitPriceMinor * multiplier;
+    db.prepare(
+      "UPDATE accounts SET cashBalanceMinor = cashBalanceMinor + ? WHERE accountId = ?",
+    ).run(
+      released ? -fillValueMinor : reservedMinor - fillValueMinor,
+      order.accountId,
+    );
+    db.prepare(
+      `INSERT INTO positions (accountId, securityId, quantity)
+       VALUES (?, ?, ?)
+       ON CONFLICT (accountId, securityId)
+       DO UPDATE SET quantity = quantity + excluded.quantity`,
+    ).run(order.accountId, order.securityId, quantity);
+  } else {
+    db.prepare(
+      "UPDATE accounts SET cashBalanceMinor = cashBalanceMinor + ? WHERE accountId = ?",
+    ).run(fillValueMinor, order.accountId);
+    if (released) {
+      db.prepare(
+        "UPDATE positions SET quantity = quantity - ? WHERE accountId = ? AND securityId = ?",
+      ).run(quantity, order.accountId, order.securityId);
+    }
+  }
+};
+
+//give back whatever is still reserved when an order is rejected or cancelled
+export const releaseReservation = (db, order) => {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const marked = db
+      .prepare(
+        "UPDATE orders SET reservationReleased = 1 WHERE orderId = ? AND  reservationReleased = 0",
+      )
+      .run(order.orderId);
+    //changes is 0 when it was already released (a duplicate message)
+    if (marked.changes === 1) {
+      const filled = getExecutionsByOrderId(db, order.orderId).reduce(
+        (sum, e) => sum + e.executedQuantity,
+        0,
+      );
+      const leaves = order.quantity - filled;
+      if (order.side === "BUY") {
+        db.prepare(
+          "UPDATE accounts SET cashBalanceMinor = cashBalanceMinor + ? WHERE  accountId = ?",
+        ).run(
+          leaves * order.limitPriceMinor * order.contractMultiplier,
+          order.accountId,
+        );
+      } else {
+        db.prepare(
+          "UPDATE positions SET quantity = quantity + ? WHERE accountId = ? AND securityId = ?",
+        ).run(leaves, order.accountId, order.securityId);
+      }
+    }
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
 };
 
 //check if status column exists

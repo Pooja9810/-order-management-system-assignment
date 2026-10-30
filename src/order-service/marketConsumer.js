@@ -4,6 +4,8 @@ import process from "node:process";
 import {
   updateAcceptedByMarket,
   insertIntoExecutions,
+  applyFillToBalances,
+  releaseReservation,
   updateRejectReason,
   getOrderByMarketOrderId,
   updateCancelOutcomeToCancelled,
@@ -64,7 +66,20 @@ const handleAccepted = (db, body, order) => {
 //If the message received has type FILL
 //we have to insert into exec table
 const handleFill = (db, body, order) => {
-  const fillType = insertIntoExecutions(db, order.orderId, body);
+  let fillType;
+  //the execution and the balances are saved together or not at all
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    fillType = insertIntoExecutions(db, order.orderId, body);
+    //changes is 0 when this execId was already saved (a duplicate message)
+    if (fillType.changes === 1) {
+      applyFillToBalances(db, order, body);
+    }
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
   refreshStatus(db, order);
   checkAndPostToLedger(db, order.orderId);
 
@@ -75,6 +90,7 @@ const handleFill = (db, body, order) => {
 //If the message received has type REJECTED
 const handleReject = (db, body, order) => {
   updateRejectReason(db, order.orderId, body.reason);
+  releaseReservation(db, order);
   //get order from db with rejectReason
   const dbOrderWithRejectReason = getOrderByMarketOrderId(
     db,
@@ -88,6 +104,7 @@ const handleReject = (db, body, order) => {
 //If msg received has type CANCELLED
 const handleCancel = (db, body, order) => {
   updateCancelOutcomeToCancelled(db, body.marketOrderId);
+  releaseReservation(db, order);
   refreshStatus(db, order);
   checkAndPostToLedger(db, order.orderId);
 };

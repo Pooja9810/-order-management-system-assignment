@@ -10,5 +10,9 @@ services:
     startCommand: npm run dev
     healthCheckPath: /health
     envVars:
+      # node:sqlite needs no flag from Node 22.13 onward
       - key: NODE_VERSION
-        value: "22.12.0"
+        value: "24"
+      # four services open ports, so name the public one
+      - key: PORT
+        value: "10000"

@@ -11,6 +11,7 @@ import {
   updateCancelRequestedAt,
   statusExists,
   checkAndPostToLedger,
+  releaseReservation,
 } from "./orderHelper.js";
 import { fetchSecurity } from "./securityHelper.js";
 import { created, ok } from "../helpers/serverHelper.js";
@@ -43,7 +44,9 @@ const SCHEMA = `
     rejectReason TEXT,
     cancelRejectReason TEXT,
     postedToLedger BOOLEAN,
-    createdAt TEXT NOT NULL
+    createdAt TEXT NOT NULL,
+     accountId TEXT NOT NULL,
+    reservationReleased INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS executions (
@@ -53,10 +56,30 @@ const SCHEMA = `
     executedQuantity INTEGER NOT NULL,
     priceMinor INTEGER NOT NULL,
     occurredAt TEXT NOT NULL
-  )
+  );
+
+     CREATE TABLE IF NOT EXISTS accounts (
+     accountId TEXT PRIMARY KEY,
+     cashBalanceMinor INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS positions (
+    accountId TEXT NOT NULL,
+    securityId TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    PRIMARY KEY (accountId, securityId)
+  );
   `;
 
 const addStatusColumn = `ALTER TABLE orders ADD COLUMN status TEXT DEFAULT "NEW"`;
+
+const SEED_TEST_ACCOUNT = `
+    INSERT OR IGNORE INTO accounts (accountId, cashBalanceMinor)VALUES
+    ('ACC-123', 1000000);
+
+  INSERT OR IGNORE INTO positions (accountId, securityId, quantity) VALUES
+    ('ACC-123', 'SEC-1001', 50);
+`;
 
 function openDb(file) {
   mkdirSync(dirname(file), { recursive: true });
@@ -64,6 +87,7 @@ function openDb(file) {
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA busy_timeout = 5000;");
   db.exec(SCHEMA);
+  db.exec(SEED_TEST_ACCOUNT);
   //check if column status exists already
 
   if (!statusExists(db)) {
@@ -86,11 +110,13 @@ const db = openDb(absoluteDbPath);
 //express file
 //import express from "express";
 const app = express();
-const PORT = 4003;
+//hosts like Render pick the public port, locally it stays 4003
+const PORT = Number(process.env.PORT ?? 4003);
 
 //This helps express read json from request bodies
 
 app.use(express.json());
+app.use(express.static("public"));
 
 app.use((err, req, res, next) => {
   // If the crash came from the express.json() parser
@@ -106,6 +132,23 @@ app.get("/health", (req, res) => {
   return res.json({
     status: "UP",
   });
+});
+
+//GET the cash balance of an account
+app.get("/accounts/:accountId", (req, res) => {
+  const account = db
+    .prepare("SELECT * FROM accounts WHERE accountId = ?")
+    .get(req.params.accountId);
+  if (!account) return res.status(404).json({ error: "ACCOUNT_NOT_FOUND" });
+  return res.json(account);
+});
+
+//GET all positions of an account
+app.get("/positions/:accountId", (req, res) => {
+  const positions = db
+    .prepare("SELECT * FROM positions WHERE accountId = ?")
+    .all(req.params.accountId);
+  return res.json({ positions });
 });
 
 //POST/orders
@@ -141,14 +184,82 @@ app.post("/orders", async (req, res) => {
         .json({ error: securityError.error });
     }
 
-    //create an order inside the orders table
-    const orderResult = createOrder(db, orderRequest, security);
+    //Pre-trade check: the account must exist
+    const { accountId } = orderRequest;
+    if (typeof accountId !== "string" || accountId.trim() === "") {
+      return res.status(400).json({ error: "MISSING_ACCOUNT_ID" });
+    }
+    const account = db
+      .prepare("SELECT cashBalanceMinor FROM accounts WHERE accountId = ?")
+      .get(accountId);
+    if (!account) {
+      return res.status(400).json({ error: "ACCOUNT_NOT_FOUND" });
+    }
+
+    //A MARKET BUY has no price yet, so there is no amount to reserve
+    if (orderRequest.side === "BUY" && orderRequest.orderType === "MARKET") {
+      return res.status(400).json({ error: "MARKET_BUY_NOT_SUPPORTED" });
+    }
+
+    //Pre-trade check: enough cash for a BUY, enough shares for a SELL
+    const costMinor =
+      orderRequest.side === "BUY"
+        ? orderRequest.quantity *
+          orderRequest.limitPriceMinor *
+          security.contractMultiplier
+        : 0;
+    if (orderRequest.side === "BUY" && account.cashBalanceMinor < costMinor) {
+      return res.status(400).json({ error: "INSUFFICIENT_FUNDS" });
+    }
+    if (orderRequest.side === "SELL") {
+      const position = db
+        .prepare(
+          "SELECT quantity FROM positions WHERE accountId = ? AND securityId = ?",
+        )
+        .get(accountId, security.securityId);
+      if ((position?.quantity ?? 0) < orderRequest.quantity) {
+        return res.status(400).json({ error: "INSUFFICIENT_SHARES" });
+      }
+    }
+
+    //Reserve the cash or shares and save the order together, or not at all
+    let orderResult;
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      if (orderRequest.side === "BUY") {
+        db.prepare(
+          "UPDATE accounts SET cashBalanceMinor = cashBalanceMinor - ? WHERE accountId = ?",
+        ).run(costMinor, accountId);
+      } else {
+        db.prepare(
+          "UPDATE positions SET quantity = quantity - ? WHERE accountId = ? AND securityId = ?",
+        ).run(orderRequest.quantity, accountId, security.securityId);
+      }
+      //create an order inside the orders table
+      orderResult = createOrder(db, orderRequest, security, accountId);
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    }
 
     //Send the order as a response
     console.log("Order present in the orders table:", orderResult);
 
     //Call the market service
-    const marketResponse = await createOrderInMarket(orderResult);
+    let marketResponse;
+    try {
+      marketResponse = await createOrderInMarket(orderResult);
+      if (!marketResponse?.marketOrderId) {
+        throw new Error("Market service gave no marketOrderId");
+      }
+    } catch (err) {
+      //the order never reached the exchange, so give the reservation back
+      console.error(err);
+      releaseReservation(db, orderResult);
+      return res.status(502).json({ error: "MARKET_SERVICE_UNAVAILABLE" });
+    }
+
     console.log("Order sent to market successfully:", marketResponse);
 
     //update marketOrderId in  the orders db

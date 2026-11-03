@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Order Management System</title>
+    <style>
+      /* Dark Theme & Base Styles */
+      :root {
+        --bg-color: #0a0b0d;
+        --card-bg: #15171c;
+        --input-bg: #1e2128;
+        --border-color: #2a2d35;
+        --text-main: #ffffff;
+        --text-muted: #8b929e;
+        --accent-green: #00c805;
+        --accent-green-hover: #00a804;
+        --error-red: #ff4d4f;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        margin: 0;
+        padding: 2rem;
+        display: flex;
+        justify-content: center;
+      }
+
+      .container {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 2rem;
+        max-width: 1100px;
+        width: 100%;
+      }
+
+      /* Typography */
+      h1 {
+        font-size: 1.5rem;
+        margin-top: 0;
+        margin-bottom: 2rem;
+        font-weight: 500;
+      }
+      h2 {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        font-weight: 500;
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      /* Cards */
+      .card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Form Elements */
+      label {
+        display: block;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+      }
+
+      input,
+      select {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        background-color: var(--input-bg);
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        padding: 1rem;
+        border-radius: 12px;
+        margin-top: 0.5rem;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+        outline: none;
+      }
+
+      input:focus,
+      select:focus {
+        border-color: var(--accent-green);
+      }
+
+      input:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      /* Buttons */
+      button {
+        width: 100%;
+        padding: 1rem;
+        border-radius: 999px;
+        border: none;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 1rem;
+      }
+
+      .btn-primary {
+        background-color: var(--accent-green);
+        color: #000;
+      }
+
+      .btn-primary:hover {
+        background-color: var(--accent-green-hover);
+        transform: translateY(-1px);
+      }
+
+      .btn-secondary {
+        background-color: transparent;
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+      }
+
+      .btn-secondary:hover {
+        background-color: var(--input-bg);
+      }
+
+      /* Balances & Tables */
+      .balance-amount {
+        font-size: 2.5rem;
+        font-weight: 600;
+        color: var(--accent-green);
+        margin: 0;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      th {
+        color: var(--text-muted);
+        font-weight: 500;
+        font-size: 0.9rem;
+      }
+
+      td {
+        font-size: 1rem;
+      }
+
+      .btn-cancel {
+        width: auto;
+        margin-top: 0;
+        padding: 0.4rem 1rem;
+        font-size: 0.85rem;
+        background-color: var(--error-red);
+        color: #fff;
+      }
+
+      .btn-cancel:hover {
+        opacity: 0.85;
+      }
+
+      /* Messages */
+      #order-history-message {
+        font-size: 0.9rem;
+        min-height: 1.2rem;
+        margin: 1rem 0 0;
+      }
+      #message {
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        text-align: center;
+        min-height: 1.2rem;
+      }
+      .error {
+        color: var(--error-red);
+      }
+      .success {
+        color: var(--accent-green);
+      }
+
+      /* Mobile Responsive */
+      @media (max-width: 800px) {
+        .container {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- LEFT COLUMN -->
+      <div>
+        <h1>Account Overview</h1>
+
+        <div class="card">
+          <h2>Available Cash</h2>
+          <p class="balance-amount" id="cash">Loading...</p>
+          <button id="refresh" class="btn-secondary" type="button">
+            Refresh Data
+          </button>
+        </div>
+
+        <div class="card">
+          <h2>Your Positions</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Security ID</th>
+                <th>Quantity</th>
+              </tr>
+            </thead>
+            <tbody id="positions">
+              <!-- Filled by JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Order History</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Security</th>
+                <th>Side</th>
+                <th>Qty</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="order-history">
+              <!-- Filled by JS -->
+            </tbody>
+          </table>
+          <p id="order-history-message"></p>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN (Trade Panel) -->
+      <div>
+        <div class="card">
+          <h2>Place Order</h2>
+          <form id="order-form">
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem"
+            >
+              <label>
+                Account ID
+                <input id="accountId" value="ACC-123" required />
+              </label>
+              <label>
+                Security ID
+                <input id="securityId" value="SEC-1001" required />
+              </label>
+            </div>
+
+            <label>
+              Action
+              <select id="side">
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+              </select>
+            </label>
+
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem"
+            >
+              <label>
+                Quantity
+                <input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="1"
+                  required
+                />
+              </label>
+              <label>
+                Order Type
+                <select id="orderType">
+                  <option value="LIMIT">LIMIT</option>
+                  <option value="MARKET">MARKET</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              Limit Price (in cents)
+              <input
+                id="limitPriceMinor"
+                type="number"
+                min="1"
+                step="1"
+                value="38500"
+              />
+            </label>
+
+            <button class="btn-primary" type="submit">Review Order</button>
+            <p id="message"></p>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      //same server that serves this page, so it works locally and when hosted
+      const API_URL = "";
+      const ACCOUNT_ID = "ACC-123";
+
+      const form = document.getElementById("order-form");
+      const orderType = document.getElementById("orderType");
+      const limitPrice = document.getElementById("limitPriceMinor");
+      const message = document.getElementById("message");
+      const cash = document.getElementById("cash");
+      const positions = document.getElementById("positions");
+      const orderHistory = document.getElementById("order-history");
+      const orderHistoryMessage = document.getElementById(
+        "order-history-message",
+      );
+
+      const showMessage = (text, className) => {
+        message.textContent = text;
+        message.className = className;
+      };
+
+      const refreshData = async () => {
+        try {
+          const accountResponse = await fetch(
+            `${API_URL}/accounts/${ACCOUNT_ID}`,
+          );
+          const account = await accountResponse.json();
+
+          if (accountResponse.ok) {
+            cash.textContent = `$${(account.cashBalanceMinor / 100).toFixed(2)}`;
+          } else {
+            cash.textContent = account.error;
+          }
+
+          const positionsResponse = await fetch(
+            `${API_URL}/positions/${ACCOUNT_ID}`,
+          );
+          const data = await positionsResponse.json();
+
+          if (data.positions && data.positions.length > 0) {
+            positions.replaceChildren(
+              ...data.positions.map((position) => {
+                const row = document.createElement("tr");
+                for (const value of [position.securityId, position.quantity]) {
+                  const cell = document.createElement("td");
+                  cell.textContent = value;
+                  row.append(cell);
+                }
+                return row;
+              }),
+            );
+          } else {
+            positions.innerHTML =
+              '<tr><td colspan="2" style="color: #8b929e;">No positions found.</td></tr>';
+          }
+        } catch {
+          cash.textContent = "Error loading data";
+        }
+      };
+
+      const showOrderHistoryMessage = (text, className) => {
+        orderHistoryMessage.textContent = text;
+        orderHistoryMessage.className = className;
+      };
+
+      const cancelOrder = async (orderId) => {
+        try {
+          const response = await fetch(`${API_URL}/orders/${orderId}`, {
+            method: "DELETE",
+          });
+          if (response.ok) {
+            showOrderHistoryMessage(`Cancel requested for order ${orderId}`, "success");
+          } else {
+            const result = await response.json();
+            showOrderHistoryMessage(`Cancel refused: ${result.error}`, "error");
+          }
+        } catch {
+          showOrderHistoryMessage("Could not reach the order service", "error");
+        }
+        await refreshOrders();
+      };
+
+      const refreshOrders = async () => {
+        try {
+          const response = await fetch(`${API_URL}/orders`);
+          const data = await response.json();
+
+          if (data.orders && data.orders.length > 0) {
+            orderHistory.replaceChildren(
+              ...data.orders.map((order) => {
+                const row = document.createElement("tr");
+                for (const value of [
+                  order.orderId,
+                  order.symbol,
+                  order.side,
+                  order.quantity,
+                  order.status,
+                ]) {
+                  const cell = document.createElement("td");
+                  cell.textContent = value;
+                  row.append(cell);
+                }
+
+                const actionCell = document.createElement("td");
+                if (order.status === "WORKING" || order.status === "NEW") {
+                  const cancelButton = document.createElement("button");
+                  cancelButton.type = "button";
+                  cancelButton.className = "btn-cancel";
+                  cancelButton.textContent = "Cancel";
+                  cancelButton.addEventListener("click", () =>
+                    cancelOrder(order.orderId),
+                  );
+                  actionCell.append(cancelButton);
+                }
+                row.append(actionCell);
+                return row;
+              }),
+            );
+          } else {
+            orderHistory.innerHTML =
+              '<tr><td colspan="6" style="color: #8b929e;">No orders found.</td></tr>';
+          }
+        } catch {
+          showOrderHistoryMessage("Could not load orders", "error");
+        }
+      };
+
+      const updateLimitPrice = () => {
+        const isLimit = orderType.value === "LIMIT";
+        limitPrice.disabled = !isLimit;
+        limitPrice.required = isLimit;
+        if (!isLimit) limitPrice.value = ""; // clear it if market
+      };
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const body = {
+          clientOrderId: crypto.randomUUID(),
+          accountId: document.getElementById("accountId").value,
+          securityId: document.getElementById("securityId").value,
+          side: document.getElementById("side").value,
+          quantity: Number(document.getElementById("quantity").value),
+          orderType: orderType.value,
+        };
+        if (orderType.value === "LIMIT") {
+          body.limitPriceMinor = Number(limitPrice.value);
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/orders`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const result = await response.json();
+          if (response.ok) {
+            showMessage(
+              `Order ${result.orderId} placed successfully!`,
+              "success",
+            );
+          } else {
+            showMessage(`Refused: ${result.error}`, "error");
+          }
+        } catch {
+          showMessage("Could not reach the order service", "error");
+        }
+        await refreshData();
+      });
+
+      orderType.addEventListener("change", updateLimitPrice);
+      document.getElementById("refresh").addEventListener("click", refreshData);
+
+      updateLimitPrice();
+      refreshData();
+      refreshOrders();
+      //so async queue updates show up without clicking anything
+      setInterval(refreshOrders, 3000);
+    </script>
+  </body>
+</html>

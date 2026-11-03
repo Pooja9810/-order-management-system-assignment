@@ -110,11 +110,13 @@ const db = openDb(absoluteDbPath);
 //express file
 //import express from "express";
 const app = express();
-const PORT = 4003;
+//hosts like Render pick the public port, locally it stays 4003
+const PORT = Number(process.env.PORT ?? 4003);
 
 //This helps express read json from request bodies
 
 app.use(express.json());
+app.use(express.static("public"));
 
 app.use((err, req, res, next) => {
   // If the crash came from the express.json() parser
@@ -130,6 +132,23 @@ app.get("/health", (req, res) => {
   return res.json({
     status: "UP",
   });
+});
+
+//GET the cash balance of an account
+app.get("/accounts/:accountId", (req, res) => {
+  const account = db
+    .prepare("SELECT * FROM accounts WHERE accountId = ?")
+    .get(req.params.accountId);
+  if (!account) return res.status(404).json({ error: "ACCOUNT_NOT_FOUND" });
+  return res.json(account);
+});
+
+//GET all positions of an account
+app.get("/positions/:accountId", (req, res) => {
+  const positions = db
+    .prepare("SELECT * FROM positions WHERE accountId = ?")
+    .all(req.params.accountId);
+  return res.json({ positions });
 });
 
 //POST/orders

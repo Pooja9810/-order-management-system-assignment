@@ -1,0 +1,14 @@
+# Render Blueprint: runs all four services in one free web service.
+# Only order-service (and its web UI) is public. The other three talk to it on localhost.
+services:
+  - type: web
+    name: order-management-system
+    runtime: node
+    plan: free
+    branch: account-balance
+    buildCommand: npm install
+    startCommand: npm run dev
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22.12.0"

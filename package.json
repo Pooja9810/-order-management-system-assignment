@@ -12,6 +12,7 @@
     "start:order": "node src/order-service/server.js",
     "start:ledger": "node src/ledger-service/server.js",
     "dev": "concurrently \"npm run start:security\" \"npm run start:market\" \"npm run start:order\" \"npm run start:ledger\"",
+    "start:hosted": "concurrently \"node --import ./scripts/bind-localhost.js scaffold/security-service/server.js\" \"node --import ./scripts/bind-localhost.js scaffold/market-service/server.js\" \"npm run start:order\" \"node --import ./scripts/bind-localhost.js src/ledger-service/server.js\"",
     "place": "node src/driver/place-orders.js",
     "report": "node src/ledger-service/report-cli.js",
     "test": "node --test \"test/*.test.js\"",

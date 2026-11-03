@@ -7,7 +7,7 @@ services:
     plan: free
     branch: account-balance
     buildCommand: npm install
-    startCommand: npm run dev
+    startCommand: npm run start:hosted
     healthCheckPath: /health
     envVars:
       # node:sqlite needs no flag from Node 22.13 onward
